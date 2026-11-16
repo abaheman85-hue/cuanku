@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.local
+*.tsbuildinfo
+.DS_Store
+.eslintcache
+.vite/
+cuanku-web.zip
+cuanku-backup-*.json
