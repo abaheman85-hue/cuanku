@@ -4,6 +4,8 @@ CuanKu adalah website catatan keuangan pribadi yang **100% offline**. Semua tran
 
 Tampilan memakai gaya neobrutalist dengan maskot uang kertas mint bernama **Cuan** yang punya empat ekspresi: senang, panik, mengantuk, dan bersorak.
 
+**Versi online:** <https://abaheman85-hue.github.io/cuanku/>
+
 ## Fitur
 
 ### Transaksi
