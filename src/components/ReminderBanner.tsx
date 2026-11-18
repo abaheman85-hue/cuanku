@@ -9,7 +9,7 @@ export function ReminderBanner() {
 
   return (
     <aside className="reminder-banner" aria-label="Pengingat mencatat">
-      <Mascot className="reminder-banner__mascot" decorative />
+      <Mascot mood="worried" className="reminder-banner__mascot" decorative />
       <div className="reminder-banner__body">
         <strong>Sudah catat pengeluaran hari ini?</strong>
         <span>

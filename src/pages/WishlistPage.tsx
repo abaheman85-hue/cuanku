@@ -85,7 +85,7 @@ function WishlistCard({
   const percent = progressPercent(item.price, item.saved_amount);
   const { status, label } = statusInfo(item, now);
   const done = isTargetReached(item.price, item.saved_amount);
-  const tone = status === 'purchased' ? 'lime' : status === 'ready' ? 'mint' : 'yellow';
+  const tone = status === 'purchased' ? 'lime' : status === 'ready' ? 'toska' : 'yellow';
 
   return (
     <article className={`wish-card ${status === 'purchased' ? 'wish-card--purchased' : ''}`.trim()}>
@@ -547,7 +547,7 @@ export function WishlistPage() {
                 </div>
 
                 <div className="row row--wrap">
-                  <Badge tone={statusInfo(detail, now).status === 'ready' ? 'mint' : 'yellow'}>
+                  <Badge tone={statusInfo(detail, now).status === 'ready' ? 'toska' : 'yellow'}>
                     {statusInfo(detail, now).label}
                   </Badge>
                   {detail.link ? (
@@ -705,7 +705,7 @@ export function WishlistPage() {
               <span />
             </div>
             <div className="celebrate">
-              <Mascot className="celebrate__mascot" decorative />
+              <Mascot mood="cheering" className="celebrate__mascot" decorative />
               <h2>Selamat!</h2>
               <p>
                 <strong>{celebrating}</strong> sudah pindah ke bagian &ldquo;Sudah dibeli&rdquo;.

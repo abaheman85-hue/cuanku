@@ -417,7 +417,7 @@ export function PengaturanPage() {
           </div>
         </Card>
 
-        <Card tone="lime">
+        <Card tone="toska">
           <div className="settings-card__head">
             <span className="settings-card__icon" style={{ background: 'var(--paper)' }}>
               <Lock aria-hidden="true" />

@@ -2,7 +2,7 @@
 
 CuanKu adalah website catatan keuangan pribadi yang **100% offline**. Semua transaksi, anggaran, wishlist, tabungan, foto, dan pengaturan disimpan di penyimpanan browser (IndexedDB) pada perangkatmu. Tidak ada akun, server, iklan, pelacakan, maupun koneksi internet yang dibutuhkan setelah aplikasi terbuka pertama kali.
 
-Tampilan memakai gaya neobrutalist dengan latar kuning mentega `#FFE76A`, pola titik `#E8CC45`, kartu mint, border hitam tebal, dan maskot koin bernama **Cuan**.
+Tampilan memakai gaya neobrutalist dengan latar kuning mentega `#FFE76A`, pola titik `#E8CC45`, kartu mint, aksen toska `#5ED4C7`, border hitam tebal, dan maskot koin bernama **Cuan** dengan enam ekspresi.
 
 **Versi online:** <https://abaheman85-hue.github.io/cuanku/>
 
@@ -52,7 +52,9 @@ Tampilan memakai gaya neobrutalist dengan latar kuning mentega `#FFE76A`, pola t
 ### Lainnya
 - Responsif untuk HP, tablet, dan desktop.
 - Navigasi bawah di HP, sidebar di layar lebar.
-- Tema kuning mentega dengan pola titik, kartu mint, dan maskot koin lokal.
+- Tema kuning mentega dengan pola titik, kartu mint, dan aksen toska.
+- Maskot koin lokal dengan ekspresi `netral`, `sleepy`, `angry`, `worried`, `cheering`, dan `happy`.
+- Ekspresi di Beranda mengikuti kondisi keuangan: saldo minus atau anggaran jebol membuat Cuan marah, target tabungan tercapai membuatnya bersorak, dan kondisi aman membuatnya senang. Badan maskot tetap satu aset PNG transparan; wajahnya jadi lapisan SVG lokal.
 - Font, ikon, dan gambar dibundel lokal — tanpa CDN.
 - Bisa dipasang sebagai PWA dan dibuka offline setelah pemuatan pertama.
 

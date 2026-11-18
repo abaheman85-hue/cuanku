@@ -1,6 +1,6 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 
-type Tone = 'paper' | 'mint' | 'lime' | 'pink' | 'yellow' | 'blue' | 'peach';
+type Tone = 'paper' | 'mint' | 'toska' | 'lime' | 'pink' | 'yellow' | 'blue' | 'peach';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   tone?: Tone;
@@ -39,7 +39,7 @@ export function Chip({
   children,
   className,
 }: {
-  tone?: 'paper' | 'mint' | 'lime' | 'pink' | 'yellow' | 'blue' | 'peach' | 'ink';
+  tone?: 'paper' | 'mint' | 'toska' | 'lime' | 'pink' | 'yellow' | 'blue' | 'peach' | 'ink';
   icon?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -57,7 +57,7 @@ export function Badge({
   children,
   className,
 }: {
-  tone?: 'paper' | 'mint' | 'lime' | 'pink' | 'yellow';
+  tone?: 'paper' | 'mint' | 'toska' | 'lime' | 'pink' | 'yellow';
   children: ReactNode;
   className?: string;
 }) {

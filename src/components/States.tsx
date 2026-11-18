@@ -17,7 +17,7 @@ export function EmptyState({
 }) {
   return (
     <Card dashed className="empty">
-      <Mascot className="empty__mascot" decorative />
+      <Mascot mood="sleepy" className="empty__mascot" decorative />
       <h3>{title}</h3>
       <p>{message}</p>
       {actionLabel && onAction ? (

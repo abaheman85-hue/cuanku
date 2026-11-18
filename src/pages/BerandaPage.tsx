@@ -31,6 +31,7 @@ import {
 } from '../db/repositories';
 import { currentMonthKey, monthLabel, toDateKey } from '../lib/dates';
 import { formatCompactRupiah, formatRupiah } from '../lib/money';
+import { resolveMascotMood } from '../lib/mascot-mood';
 import { progressPercent } from '../lib/wishlist';
 import { useLiveQuery } from '../hooks/useLiveQuery';
 import { Button } from '../components/ui/Button';
@@ -64,27 +65,6 @@ const EMPTY_SAVINGS: SavingsTotals = {
 function defaultDateForMonth(month: string): string {
   const current = currentMonthKey();
   return month === current ? toDateKey() : `${month}-01`;
-}
-
-function heroCopy(balance: number, count: number): { speech: string } {
-  if (count === 0) {
-    return {
-      speech: 'Belum ada catatan bulan ini. Yuk mulai dari pengeluaran kecil hari ini.',
-    };
-  }
-  if (balance < 0) {
-    return {
-      speech: 'Waduh, pengeluaran lebih besar dari pemasukan. Coba rem pengeluaran ya!',
-    };
-  }
-  if (count >= 8) {
-    return {
-      speech: 'Rajin sekali mencatat! Cuan tetap aman dan terkendali.',
-    };
-  }
-  return {
-    speech: 'Cuan aman! Sedikit lagi rapi. Terus catat supaya makin jelas.',
-  };
 }
 
 export function BerandaPage() {
@@ -127,7 +107,15 @@ export function BerandaPage() {
   const wishlist = wishlistQuery.data;
   const budget = budgetQuery.data;
   const savings = savingsQuery.data;
-  const hero = heroCopy(summary.balance, summary.count);
+  const hero = resolveMascotMood({
+    loading: summaryQuery.loading,
+    count: summary.count,
+    balance: summary.balance,
+    income: summary.income,
+    expense: summary.expense,
+    budgetPercent: budget.percent,
+    savingsAchieved: savings.achievedCount + savings.completedCount,
+  });
   const breakdownTotal = useMemo(
     () => breakdown.reduce((total, row) => total + row.total, 0),
     [breakdown],
@@ -171,7 +159,7 @@ export function BerandaPage() {
           <Button icon={<TrendingDown />} onClick={() => openForm('expense')}>
             Pengeluaran
           </Button>
-          <Button variant="mint" icon={<TrendingUp />} onClick={() => openForm('income')}>
+          <Button variant="toska" icon={<TrendingUp />} onClick={() => openForm('income')}>
             Pemasukan
           </Button>
         </div>
@@ -208,7 +196,7 @@ export function BerandaPage() {
             </Link>
           </div>
           <div className="hero__mascot">
-            <Mascot decorative />
+            <Mascot mood={hero.mood} decorative />
             <p className="speech">{hero.speech}</p>
           </div>
         </section>
@@ -230,7 +218,7 @@ export function BerandaPage() {
           </div>
         </div>
 
-        <Card tone="mint" className="home-budget">
+        <Card tone="toska" className="home-budget">
           <div className="section-head">
             <h2 className="section-title">
               <Target aria-hidden="true" /> Anggaran bulan ini

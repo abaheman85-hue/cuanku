@@ -112,7 +112,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
         }
       >
         <div className="confirm">
-          <Mascot className="confirm__mascot" decorative />
+          <Mascot mood="netral" className="confirm__mascot" decorative />
           <p>{dialog?.message ?? 'Lanjutkan tindakan ini?'}</p>
         </div>
       </Modal>

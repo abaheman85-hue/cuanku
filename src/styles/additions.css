@@ -428,3 +428,46 @@
     flex-wrap: wrap;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Toska: warna baru untuk kartu anggaran, wishlist, dan Tentang CuanKu
+   -------------------------------------------------------------------------- */
+
+.card--toska {
+  background: var(--toska);
+}
+
+.badge--toska,
+.chip--toska {
+  background: var(--toska);
+}
+
+.btn--toska {
+  --btn-bg: var(--toska);
+}
+
+/* --------------------------------------------------------------------------
+   Maskot dengan ekspresi: badan koin tetap satu aset, wajah jadi lapisan SVG
+   -------------------------------------------------------------------------- */
+
+.mascot {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  line-height: 0;
+}
+
+.mascot__body {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.mascot__face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}

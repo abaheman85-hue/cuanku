@@ -1,6 +1,15 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-type Variant = 'paper' | 'primary' | 'mint' | 'lime' | 'pink' | 'yellow' | 'ghost' | 'danger';
+type Variant =
+  | 'paper'
+  | 'primary'
+  | 'mint'
+  | 'toska'
+  | 'lime'
+  | 'pink'
+  | 'yellow'
+  | 'ghost'
+  | 'danger';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;

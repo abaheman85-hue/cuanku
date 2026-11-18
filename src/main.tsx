@@ -16,7 +16,7 @@ type BootState = { status: 'loading' } | { status: 'ready' } | { status: 'error'
 function BootScreen({ error, onRetry }: { error?: string; onRetry?: () => void }) {
   return (
     <div className="boot">
-      <Mascot className="boot__mascot" decorative />
+      <Mascot mood={error ? 'angry' : 'netral'} className="boot__mascot" decorative />
       <h1>CuanKu</h1>
       {error ? (
         <>

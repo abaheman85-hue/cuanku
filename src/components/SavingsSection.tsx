@@ -253,7 +253,7 @@ export function SavingsSection() {
           {achieved.map((goal) => (
             <Card tone="lime" className="reward-card" key={goal.id}>
               <Confetti />
-              <Mascot className="reward-card__mascot" decorative />
+              <Mascot mood="cheering" className="reward-card__mascot" decorative />
               <div className="reward-card__body">
                 <span className="eyebrow">
                   <PartyPopper aria-hidden="true" /> Selamat!
@@ -444,7 +444,7 @@ export function SavingsSection() {
       >
         <Confetti />
         <div className="celebrate">
-          <Mascot className="celebrate__mascot" decorative />
+          <Mascot mood="cheering" className="celebrate__mascot" decorative />
           <h2>Selamat!</h2>
           <p>
             <strong>{formatRupiah(celebrating?.amount ?? 0)}</strong> untuk me time sudah dicatat
