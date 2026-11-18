@@ -54,7 +54,7 @@ Tampilan memakai gaya neobrutalist dengan latar kuning mentega `#FFE76A`, pola t
 - Navigasi bawah di HP, sidebar di layar lebar.
 - Tema kuning mentega dengan pola titik, kartu mint, dan aksen toska.
 - Maskot koin lokal dengan ekspresi `netral`, `sleepy`, `angry`, `worried`, `cheering`, dan `happy`.
-- Ekspresi di Beranda mengikuti kondisi keuangan: saldo minus atau anggaran jebol membuat Cuan marah, target tabungan tercapai membuatnya bersorak, dan kondisi aman membuatnya senang. Badan maskot tetap satu aset PNG transparan; wajahnya jadi lapisan SVG lokal.
+- Ekspresi di Beranda mengikuti kondisi keuangan: saldo minus atau anggaran jebol membuat Cuan marah, target tabungan tercapai membuatnya bersorak, dan kondisi aman membuatnya senang. Setiap ekspresi memakai gambar PNG lokal yang sudah dipotong dan dioptimalkan untuk web.
 - Font, ikon, dan gambar dibundel lokal — tanpa CDN.
 - Bisa dipasang sebagai PWA dan dibuka offline setelah pemuatan pertama.
 
