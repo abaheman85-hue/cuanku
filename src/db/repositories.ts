@@ -1,11 +1,22 @@
 import { db as defaultDb, type CuanKuDatabase } from './db';
 import type {
   AppSettings,
+  Budget,
+  BudgetAlert,
+  BudgetAlertLevel,
+  BudgetAlertNotice,
+  BudgetMonth,
+  BudgetOverview,
+  BudgetRow,
   Category,
   CategoryTotal,
   MonthSummary,
   MonthlyPoint,
   ParsedBackup,
+  SavingsDeposit,
+  SavingsGoal,
+  SavingsGoalView,
+  SavingsTotals,
   Setting,
   Transaction,
   TransactionType,
@@ -14,7 +25,7 @@ import type {
   WishlistItem,
 } from './types';
 import { DEFAULT_SETTINGS } from './types';
-import { isValidDateKey, isoNow, monthKeysEndingAt } from '../lib/dates';
+import { isValidDateKey, isValidMonthKey, isoNow, monthKeysEndingAt, toDateKey } from '../lib/dates';
 import { settingsFromRows, settingsToRows } from '../lib/settings';
 
 type Db = CuanKuDatabase;
@@ -50,6 +61,11 @@ function cleanDate(value: string): string {
 function cleanType(value: string): TransactionType {
   if (value === 'income' || value === 'expense') return value;
   throw new Error('Jenis transaksi tidak dikenal.');
+}
+
+function cleanMonth(value: string): string {
+  if (!isValidMonthKey(value)) throw new Error('Bulan tidak valid.');
+  return value;
 }
 
 function cleanLink(value: string | null | undefined): string | null {
@@ -125,13 +141,22 @@ export async function countTransactionsByCategory(
 }
 
 export async function deleteCategory(database: Db = defaultDb, id: number): Promise<void> {
-  await database.transaction('rw', database.categories, database.transactions, async () => {
-    await database.transactions
-      .where('category_id')
-      .equals(id)
-      .modify({ category_id: null, updated_at: isoNow() });
-    await database.categories.delete(id);
-  });
+  await database.transaction(
+    'rw',
+    database.categories,
+    database.transactions,
+    database.budgets,
+    database.budgetAlerts,
+    async () => {
+      await database.transactions
+        .where('category_id')
+        .equals(id)
+        .modify({ category_id: null, updated_at: isoNow() });
+      await database.budgets.where('category_id').equals(id).delete();
+      await database.budgetAlerts.where('category_id').equals(id).delete();
+      await database.categories.delete(id);
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -325,6 +350,222 @@ export async function getDayTotal(
 }
 
 // ---------------------------------------------------------------------------
+// Anggaran
+// ---------------------------------------------------------------------------
+
+function budgetLevel(amount: number, spent: number): 0 | BudgetAlertLevel {
+  if (amount <= 0) return 0;
+  const percent = (spent / amount) * 100;
+  if (percent >= 100) return 100;
+  if (percent >= 80) return 80;
+  return 0;
+}
+
+/**
+ * Menyalin anggaran bulan sebelumnya ke bulan ini sekali saja.
+ * Penanda `budget_months` mencegah penyalinan ulang setelah pengguna
+ * sengaja menghapus semua anggaran di bulan tersebut.
+ */
+export async function ensureBudgetMonth(
+  database: Db = defaultDb,
+  monthInput: string = toDateKey().slice(0, 7),
+): Promise<void> {
+  const month = cleanMonth(monthInput);
+  await database.transaction('rw', database.budgets, database.budgetMonths, async () => {
+    const marker = await database.budgetMonths.get(month);
+    if (marker) return;
+
+    const previous = await database.budgets
+      .filter((row) => row.month < month)
+      .toArray();
+    const sourceMonth = previous
+      .map((row) => row.month)
+      .sort()
+      .at(-1);
+    if (sourceMonth) {
+      const now = isoNow();
+      const copies = previous
+        .filter((row) => row.month === sourceMonth)
+        .map((row) => ({
+          month,
+          category_id: row.category_id,
+          amount: row.amount,
+          created_at: now,
+          updated_at: now,
+        }));
+      if (copies.length > 0) await database.budgets.bulkAdd(copies);
+    }
+
+    await database.budgetMonths.put({ month, initialized_at: isoNow() });
+  });
+}
+
+export async function getBudgetOverview(
+  database: Db = defaultDb,
+  monthInput: string,
+): Promise<BudgetOverview> {
+  const month = cleanMonth(monthInput);
+  const [budgets, categories, transactions] = await Promise.all([
+    database.budgets.where('month').equals(month).toArray(),
+    database.categories.toArray(),
+    database.transactions.where('date').startsWith(month).toArray(),
+  ]);
+
+  const categoryMap = new Map(categories.map((category) => [category.id!, category]));
+  const spentByCategory = new Map<number, number>();
+  for (const row of transactions) {
+    if (row.type !== 'expense' || row.category_id === null) continue;
+    spentByCategory.set(
+      row.category_id,
+      (spentByCategory.get(row.category_id) ?? 0) + row.amount,
+    );
+  }
+
+  const rows: BudgetRow[] = [];
+  for (const budget of budgets) {
+    const category = categoryMap.get(budget.category_id);
+    if (!category) continue;
+    const spent = spentByCategory.get(budget.category_id) ?? 0;
+    rows.push({
+      budget_id: budget.id!,
+      category_id: budget.category_id,
+      category_name: category.name,
+      category_color: category.color,
+      amount: budget.amount,
+      spent,
+      percent: budget.amount > 0 ? (spent / budget.amount) * 100 : 0,
+      level: budgetLevel(budget.amount, spent),
+    });
+  }
+  rows.sort((a, b) => b.percent - a.percent || a.category_name.localeCompare(b.category_name));
+
+  const budgeted = new Set(rows.map((row) => row.category_id));
+  const unassigned = categories
+    .filter((category) => category.type === 'expense' && !budgeted.has(category.id!))
+    .map((category) => ({
+      category_id: category.id!,
+      category_name: category.name,
+      category_color: category.color,
+      spent: spentByCategory.get(category.id!) ?? 0,
+    }))
+    .sort((a, b) => b.spent - a.spent || a.category_name.localeCompare(b.category_name));
+
+  const totalLimit = rows.reduce((total, row) => total + row.amount, 0);
+  const totalSpent = rows.reduce((total, row) => total + row.spent, 0);
+
+  return {
+    month,
+    rows,
+    unassigned,
+    totalLimit,
+    totalSpent,
+    percent: totalLimit > 0 ? (totalSpent / totalLimit) * 100 : 0,
+  };
+}
+
+export async function saveBudget(
+  database: Db = defaultDb,
+  input: { month: string; category_id: number; amount: number },
+): Promise<number> {
+  const month = cleanMonth(input.month);
+  const amount = cleanAmount(input.amount);
+  const category = await database.categories.get(input.category_id);
+  if (!category || category.type !== 'expense') {
+    throw new Error('Pilih kategori pengeluaran yang valid.');
+  }
+  const now = isoNow();
+  return database.transaction('rw', database.budgets, async () => {
+    const existing = await database.budgets
+      .where('[month+category_id]')
+      .equals([month, input.category_id])
+      .first();
+    if (existing?.id) {
+      await database.budgets.update(existing.id, { amount, updated_at: now });
+      return existing.id;
+    }
+    return database.budgets.add({
+      month,
+      category_id: input.category_id,
+      amount,
+      created_at: now,
+      updated_at: now,
+    });
+  });
+}
+
+export async function deleteBudget(database: Db = defaultDb, id: number): Promise<void> {
+  await database.transaction('rw', database.budgets, database.budgetAlerts, async () => {
+    const row = await database.budgets.get(id);
+    if (!row) return;
+    await database.budgetAlerts
+      .where('month')
+      .equals(row.month)
+      .filter((alert) => alert.category_id === row.category_id)
+      .delete();
+    await database.budgets.delete(id);
+  });
+}
+
+export async function listBudgetAlerts(
+  database: Db = defaultDb,
+  monthInput: string,
+): Promise<BudgetAlert[]> {
+  const month = cleanMonth(monthInput);
+  return database.budgetAlerts.where('month').equals(month).toArray();
+}
+
+/**
+ * Mencatat level peringatan yang belum pernah dikirim untuk bulan ini.
+ * Kalau satu transaksi langsung melewati 80% dan 100%, hanya level 100
+ * yang dilaporkan, tetapi kedua level ditandai agar tidak berulang.
+ */
+export async function checkBudgetAlerts(
+  database: Db = defaultDb,
+  monthInput: string = toDateKey().slice(0, 7),
+): Promise<BudgetAlertNotice[]> {
+  const month = cleanMonth(monthInput);
+  const [overview, existing] = await Promise.all([
+    getBudgetOverview(database, month),
+    listBudgetAlerts(database, month),
+  ]);
+  const marked = new Set(existing.map((row) => `${row.category_id}:${row.level}`));
+  const toAdd: BudgetAlert[] = [];
+  const notices: BudgetAlertNotice[] = [];
+
+  for (const row of overview.rows) {
+    if (row.level < 80) continue;
+    const levels: BudgetAlertLevel[] = row.level === 100 ? [80, 100] : [80];
+    let highestMissing: BudgetAlertLevel | null = null;
+    for (const level of levels) {
+      if (marked.has(`${row.category_id}:${level}`)) continue;
+      toAdd.push({
+        month,
+        category_id: row.category_id,
+        level,
+        notified_at: isoNow(),
+      });
+      highestMissing = level;
+    }
+    if (highestMissing !== null) {
+      notices.push({
+        category_id: row.category_id,
+        category_name: row.category_name,
+        level: highestMissing,
+        spent: row.spent,
+        amount: row.amount,
+      });
+    }
+  }
+
+  if (toAdd.length > 0) {
+    await Promise.all(
+      toAdd.map((row) => database.budgetAlerts.add(row).catch(() => undefined)),
+    );
+  }
+  return notices;
+}
+
+// ---------------------------------------------------------------------------
 // Wishlist
 // ---------------------------------------------------------------------------
 
@@ -459,6 +700,237 @@ export async function getWishlistTotals(database: Db = defaultDb): Promise<Wishl
 }
 
 // ---------------------------------------------------------------------------
+// Tabungan target ("me time")
+// ---------------------------------------------------------------------------
+
+export interface SavingsGoalInput {
+  name: string;
+  target_amount: number;
+  note: string | null;
+}
+
+export interface SavingsDepositInput {
+  amount: number;
+  date: string;
+  note: string | null;
+}
+
+function savingsPercent(target: number, saved: number): number {
+  if (target <= 0) return 0;
+  return Math.min(100, Math.max(0, (saved / target) * 100));
+}
+
+export async function listSavingsGoals(database: Db = defaultDb): Promise<SavingsGoalView[]> {
+  const [goals, deposits] = await Promise.all([
+    database.savingsGoals.toArray(),
+    database.savingsDeposits.toArray(),
+  ]);
+  const depositsByGoal = new Map<number, SavingsDeposit[]>();
+  for (const deposit of deposits) {
+    const list = depositsByGoal.get(deposit.goal_id) ?? [];
+    list.push(deposit);
+    depositsByGoal.set(deposit.goal_id, list);
+  }
+
+  return goals
+    .map((goal) => {
+      const goalDeposits = (depositsByGoal.get(goal.id!) ?? []).sort(
+        (a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0),
+      );
+      const saved = goalDeposits.reduce((total, row) => total + row.amount, 0);
+      const achieved = goal.target_amount > 0 && saved >= goal.target_amount;
+      return {
+        ...goal,
+        saved,
+        remaining: Math.max(0, goal.target_amount - saved),
+        percent: savingsPercent(goal.target_amount, saved),
+        achieved,
+        completed: goal.reward_claimed_at !== null,
+        deposits: goalDeposits,
+      };
+    })
+    .sort((a, b) => {
+      if (a.completed !== b.completed) return Number(a.completed) - Number(b.completed);
+      if (a.achieved !== b.achieved) return Number(b.achieved) - Number(a.achieved);
+      return b.created_at.localeCompare(a.created_at);
+    });
+}
+
+export async function getSavingsTotals(database: Db = defaultDb): Promise<SavingsTotals> {
+  const goals = await listSavingsGoals(database);
+  const active = goals.filter((goal) => !goal.completed);
+  return {
+    target: active.reduce((total, goal) => total + goal.target_amount, 0),
+    saved: active.reduce((total, goal) => total + goal.saved, 0),
+    activeCount: active.filter((goal) => !goal.achieved).length,
+    achievedCount: active.filter((goal) => goal.achieved).length,
+    completedCount: goals.length - active.length,
+  };
+}
+
+export async function createSavingsGoal(
+  database: Db = defaultDb,
+  input: SavingsGoalInput,
+): Promise<number> {
+  const name = cleanName(input.name, 120);
+  const target = cleanAmount(input.target_amount);
+  return database.savingsGoals.add({
+    name,
+    target_amount: target,
+    note: cleanNote(input.note, 500),
+    created_at: isoNow(),
+    achieved_at: null,
+    reward_claimed_at: null,
+    reward_transaction_id: null,
+    reward_amount: 0,
+  });
+}
+
+export async function updateSavingsGoal(
+  database: Db = defaultDb,
+  id: number,
+  input: SavingsGoalInput,
+): Promise<void> {
+  const goal = await database.savingsGoals.get(id);
+  if (!goal) throw new Error('Tabungan tidak ditemukan.');
+  await database.savingsGoals.update(id, {
+    name: cleanName(input.name, 120),
+    target_amount: cleanAmount(input.target_amount),
+    note: cleanNote(input.note, 500),
+  });
+}
+
+export async function deleteSavingsGoal(database: Db = defaultDb, id: number): Promise<void> {
+  await database.transaction('rw', database.savingsGoals, database.savingsDeposits, async () => {
+    await database.savingsDeposits.where('goal_id').equals(id).delete();
+    await database.savingsGoals.delete(id);
+  });
+}
+
+export async function addSavingsDeposit(
+  database: Db = defaultDb,
+  goalId: number,
+  input: SavingsDepositInput,
+): Promise<number> {
+  const deposit: SavingsDeposit = {
+    goal_id: goalId,
+    amount: cleanAmount(input.amount),
+    date: cleanDate(input.date),
+    note: cleanNote(input.note, 300),
+    created_at: isoNow(),
+  };
+  return database.transaction('rw', database.savingsGoals, database.savingsDeposits, async () => {
+    const goal = await database.savingsGoals.get(goalId);
+    if (!goal) throw new Error('Tabungan tidak ditemukan.');
+    if (goal.reward_claimed_at) throw new Error('Target ini sudah selesai dan tidak bisa ditambah.');
+    const id = await database.savingsDeposits.add(deposit);
+    if (!goal.achieved_at) {
+      const saved = await database.savingsDeposits
+        .where('goal_id')
+        .equals(goalId)
+        .toArray()
+        .then((rows) => rows.reduce((total, row) => total + row.amount, 0));
+      if (saved >= goal.target_amount) {
+        await database.savingsGoals.update(goalId, { achieved_at: isoNow() });
+      }
+    }
+    return id;
+  });
+}
+
+export async function deleteSavingsDeposit(database: Db = defaultDb, id: number): Promise<void> {
+  await database.transaction('rw', database.savingsGoals, database.savingsDeposits, async () => {
+    const deposit = await database.savingsDeposits.get(id);
+    if (!deposit) return;
+    const goal = await database.savingsGoals.get(deposit.goal_id);
+    if (goal?.reward_claimed_at) {
+      throw new Error('Setoran target yang sudah selesai tidak bisa dihapus.');
+    }
+    await database.savingsDeposits.delete(id);
+    if (goal?.achieved_at) {
+      const saved = await database.savingsDeposits
+        .where('goal_id')
+        .equals(deposit.goal_id)
+        .toArray()
+        .then((rows) => rows.reduce((total, row) => total + row.amount, 0));
+      if (saved < goal.target_amount) {
+        await database.savingsGoals.update(deposit.goal_id, { achieved_at: null });
+      }
+    }
+  });
+}
+
+export interface RewardClaim {
+  goal_id: number;
+  transaction_id: number;
+  amount: number;
+  category_name: string;
+}
+
+/** Klaim reward "me time" sekali per target; membuat satu transaksi nyata. */
+export async function claimSavingsReward(
+  database: Db = defaultDb,
+  goalId: number,
+  amountInput: number,
+): Promise<RewardClaim> {
+  const amount = cleanAmount(amountInput);
+  return database.transaction(
+    'rw',
+    database.savingsGoals,
+    database.savingsDeposits,
+    database.categories,
+    database.transactions,
+    async () => {
+      const goal = await database.savingsGoals.get(goalId);
+      if (!goal) throw new Error('Tabungan tidak ditemukan.');
+      if (goal.reward_claimed_at) throw new Error('Reward untuk target ini sudah diklaim.');
+      const deposits = await database.savingsDeposits.where('goal_id').equals(goalId).toArray();
+      const saved = deposits.reduce((total, row) => total + row.amount, 0);
+      if (saved < goal.target_amount) throw new Error('Target belum tercapai.');
+      if (amount > saved) throw new Error('Nominal melebihi dana yang terkumpul.');
+
+      const categories = await database.categories.toArray();
+      const category = categories.find(
+        (row) => row.type === 'expense' && row.name.trim().toLowerCase() === 'me time',
+      );
+      let categoryId = category?.id;
+      if (categoryId === undefined) {
+        categoryId = await database.categories.add({
+          name: 'Me time',
+          type: 'expense',
+          color: '#D9C7FF',
+          is_default: 1,
+          created_at: isoNow(),
+        });
+      }
+
+      const now = isoNow();
+      const transactionId = await database.transactions.add({
+        type: 'expense',
+        amount,
+        category_id: categoryId,
+        date: toDateKey(),
+        note: cleanNote(`Me time: ${goal.name}`, 300),
+        created_at: now,
+        updated_at: now,
+      });
+      await database.savingsGoals.update(goalId, {
+        achieved_at: goal.achieved_at ?? now,
+        reward_claimed_at: now,
+        reward_transaction_id: transactionId,
+        reward_amount: amount,
+      });
+      return {
+        goal_id: goalId,
+        transaction_id: transactionId,
+        amount,
+        category_name: category?.name ?? 'Me time',
+      };
+    },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Pengaturan
 // ---------------------------------------------------------------------------
 
@@ -495,16 +967,46 @@ export interface BackupData {
   transactions: Transaction[];
   wishlist: WishlistItem[];
   settings: Setting[];
+  budgets: Budget[];
+  budgetMonths: BudgetMonth[];
+  budgetAlerts: BudgetAlert[];
+  savingsGoals: SavingsGoal[];
+  savingsDeposits: SavingsDeposit[];
 }
 
 export async function readBackupData(database: Db = defaultDb): Promise<BackupData> {
-  const [categories, transactions, wishlist, settings] = await Promise.all([
+  const [
+    categories,
+    transactions,
+    wishlist,
+    settings,
+    budgets,
+    budgetMonths,
+    budgetAlerts,
+    savingsGoals,
+    savingsDeposits,
+  ] = await Promise.all([
     database.categories.toArray(),
     database.transactions.toArray(),
     database.wishlist.toArray(),
     database.settings.toArray(),
+    database.budgets.toArray(),
+    database.budgetMonths.toArray(),
+    database.budgetAlerts.toArray(),
+    database.savingsGoals.toArray(),
+    database.savingsDeposits.toArray(),
   ]);
-  return { categories, transactions, wishlist, settings };
+  return {
+    categories,
+    transactions,
+    wishlist,
+    settings,
+    budgets,
+    budgetMonths,
+    budgetAlerts,
+    savingsGoals,
+    savingsDeposits,
+  };
 }
 
 export async function importBackupData(
@@ -513,20 +1015,39 @@ export async function importBackupData(
 ): Promise<void> {
   await database.transaction(
     'rw',
-    database.categories,
-    database.transactions,
-    database.wishlist,
-    database.settings,
+    [
+      database.categories,
+      database.transactions,
+      database.wishlist,
+      database.settings,
+      database.budgets,
+      database.budgetMonths,
+      database.budgetAlerts,
+      database.savingsGoals,
+      database.savingsDeposits,
+    ],
     async () => {
       await Promise.all([
         database.categories.clear(),
         database.transactions.clear(),
         database.wishlist.clear(),
         database.settings.clear(),
+        database.budgets.clear(),
+        database.budgetMonths.clear(),
+        database.budgetAlerts.clear(),
+        database.savingsGoals.clear(),
+        database.savingsDeposits.clear(),
       ]);
       if (parsed.categories.length > 0) await database.categories.bulkAdd(parsed.categories);
       if (parsed.transactions.length > 0) await database.transactions.bulkAdd(parsed.transactions);
       if (parsed.wishlist.length > 0) await database.wishlist.bulkAdd(parsed.wishlist);
+      if (parsed.budgets.length > 0) await database.budgets.bulkAdd(parsed.budgets);
+      if (parsed.budgetMonths.length > 0) await database.budgetMonths.bulkAdd(parsed.budgetMonths);
+      if (parsed.budgetAlerts.length > 0) await database.budgetAlerts.bulkAdd(parsed.budgetAlerts);
+      if (parsed.savingsGoals.length > 0) await database.savingsGoals.bulkAdd(parsed.savingsGoals);
+      if (parsed.savingsDeposits.length > 0) {
+        await database.savingsDeposits.bulkAdd(parsed.savingsDeposits);
+      }
       await database.settings.bulkPut(parsed.settingsRows);
     },
   );

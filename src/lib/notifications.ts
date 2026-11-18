@@ -28,13 +28,22 @@ export async function requestNotificationPermission(): Promise<ReminderPermissio
 export async function showReminderNotification(
   body: string = REMINDER_BODY,
 ): Promise<boolean> {
+  return showAppNotification(REMINDER_TITLE, body, 'cuanku-pengingat-harian');
+}
+
+/** Notifikasi umum (best-effort) untuk pesan dalam aplikasi. */
+export async function showAppNotification(
+  title: string,
+  body: string,
+  tag: string,
+): Promise<boolean> {
   if (!notificationsSupported() || Notification.permission !== 'granted') return false;
 
   const options: NotificationOptions = {
     body,
     icon: './icons/icon-192.png',
     badge: './icons/icon-192.png',
-    tag: 'cuanku-pengingat-harian',
+    tag,
     lang: 'id',
   };
 
@@ -42,11 +51,11 @@ export async function showReminderNotification(
     if ('serviceWorker' in navigator) {
       const registration = await navigator.serviceWorker.getRegistration();
       if (registration) {
-        await registration.showNotification(REMINDER_TITLE, options);
+        await registration.showNotification(title, options);
         return true;
       }
     }
-    new Notification(REMINDER_TITLE, options);
+    new Notification(title, options);
     return true;
   } catch {
     return false;

@@ -74,6 +74,13 @@ export function isValidDateKey(key: string): boolean {
   return !Number.isNaN(date.getTime()) && toDateKey(date) === key;
 }
 
+export function isValidMonthKey(key: string): boolean {
+  const match = MONTH_KEY.exec(key);
+  if (!match) return false;
+  const month = Number(match[2]);
+  return month >= 1 && month <= 12;
+}
+
 export function monthLabel(key: string): string {
   const date = parseMonthKey(key);
   if (Number.isNaN(date.getTime())) return key;

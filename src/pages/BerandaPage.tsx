@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Calendar,
   ChevronRight,
   Gift,
+  PiggyBank,
   Plus,
   ReceiptText,
   Sparkles,
@@ -12,11 +13,19 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
-import type { TransactionView, TransactionType } from '../db/types';
+import type {
+  BudgetOverview,
+  SavingsTotals,
+  TransactionView,
+  TransactionType,
+} from '../db/types';
 import {
+  ensureBudgetMonth,
+  getBudgetOverview,
   getExpenseByCategory,
   getMonthSummary,
   getMonthlySeries,
+  getSavingsTotals,
   getWishlistTotals,
   listRecentTransactions,
 } from '../db/repositories';
@@ -32,37 +41,48 @@ import { ProgressBar } from '../components/ProgressBar';
 import { TransactionItem } from '../components/TransactionItem';
 import { TransactionForm } from '../components/TransactionForm';
 import { LoadingState, ErrorState, EmptyState, InlineEmpty } from '../components/States';
-import { Mascot, type MascotMood } from '../components/Mascot';
+import { Mascot } from '../components/Mascot';
 
 const EMPTY_SUMMARY = { income: 0, expense: 0, balance: 0, count: 0 };
 const EMPTY_WISHLIST = { target: 0, saved: 0, remaining: 0, activeCount: 0, purchasedCount: 0 };
+const EMPTY_BUDGET: BudgetOverview = {
+  month: '',
+  rows: [],
+  unassigned: [],
+  totalLimit: 0,
+  totalSpent: 0,
+  percent: 0,
+};
+const EMPTY_SAVINGS: SavingsTotals = {
+  target: 0,
+  saved: 0,
+  activeCount: 0,
+  achievedCount: 0,
+  completedCount: 0,
+};
 
 function defaultDateForMonth(month: string): string {
   const current = currentMonthKey();
   return month === current ? toDateKey() : `${month}-01`;
 }
 
-function heroCopy(balance: number, count: number): { mood: MascotMood; speech: string } {
+function heroCopy(balance: number, count: number): { speech: string } {
   if (count === 0) {
     return {
-      mood: 'sleepy',
       speech: 'Belum ada catatan bulan ini. Yuk mulai dari pengeluaran kecil hari ini.',
     };
   }
   if (balance < 0) {
     return {
-      mood: 'panic',
       speech: 'Waduh, pengeluaran lebih besar dari pemasukan. Coba rem pengeluaran ya!',
     };
   }
   if (count >= 8) {
     return {
-      mood: 'cheering',
       speech: 'Rajin sekali mencatat! Cuan tetap aman dan terkendali.',
     };
   }
   return {
-    mood: 'happy',
     speech: 'Cuan aman! Sedikit lagi rapi. Terus catat supaya makin jelas.',
   };
 }
@@ -90,17 +110,32 @@ export function BerandaPage() {
   );
   const recentQuery = useLiveQuery(() => listRecentTransactions(undefined, 5), [], []);
   const wishlistQuery = useLiveQuery(() => getWishlistTotals(), [], EMPTY_WISHLIST);
+  const budgetQuery = useLiveQuery(
+    () => getBudgetOverview(undefined, month),
+    [month],
+    EMPTY_BUDGET,
+  );
+  const savingsQuery = useLiveQuery(() => getSavingsTotals(), [], EMPTY_SAVINGS);
+
+  useEffect(() => {
+    void ensureBudgetMonth(undefined, month).catch(() => undefined);
+  }, [month]);
 
   const summary = summaryQuery.data;
   const breakdown = breakdownQuery.data;
   const recent = recentQuery.data;
   const wishlist = wishlistQuery.data;
+  const budget = budgetQuery.data;
+  const savings = savingsQuery.data;
   const hero = heroCopy(summary.balance, summary.count);
   const breakdownTotal = useMemo(
     () => breakdown.reduce((total, row) => total + row.total, 0),
     [breakdown],
   );
   const wishlistPercent = progressPercent(wishlist.target, wishlist.saved);
+  const budgetTone =
+    budget.percent >= 100 ? 'danger' : budget.percent >= 80 ? 'warn' : 'default';
+  const topBudgets = budget.rows.slice(0, 3);
 
   const openForm = (type: TransactionType) => {
     setEditing(null);
@@ -166,9 +201,14 @@ export function BerandaPage() {
                 Keluar {formatCompactRupiah(summary.expense)}
               </span>
             </div>
+            <Link className="hero__savings" to="/wishlist?tab=tabungan">
+              <PiggyBank aria-hidden="true" />
+              Tertabung <strong>{formatRupiah(savings.saved)}</strong>
+              <ChevronRight size={14} aria-hidden="true" />
+            </Link>
           </div>
           <div className="hero__mascot">
-            <Mascot mood={hero.mood} decorative />
+            <Mascot decorative />
             <p className="speech">{hero.speech}</p>
           </div>
         </section>
@@ -189,6 +229,56 @@ export function BerandaPage() {
             <p className="stat-card__foot">Uang yang keluar bulan ini</p>
           </div>
         </div>
+
+        <Card tone="mint" className="home-budget">
+          <div className="section-head">
+            <h2 className="section-title">
+              <Target aria-hidden="true" /> Anggaran bulan ini
+            </h2>
+            <Link className="section-link" to="/anggaran">
+              Atur anggaran <ChevronRight size={14} aria-hidden="true" />
+            </Link>
+          </div>
+          {budgetQuery.loading ? (
+            <LoadingState label="Memuat anggaran..." />
+          ) : budget.rows.length === 0 ? (
+            <div className="stack stack--sm">
+              <p className="small muted">
+                Belum ada batas pengeluaran. Tambahkan anggaran supaya pemakaian bulan ini lebih
+                mudah dipantau.
+              </p>
+              <Link className="btn btn--sm" to="/anggaran">
+                <Plus aria-hidden="true" /> Tambah anggaran
+              </Link>
+            </div>
+          ) : (
+            <div className="stack stack--sm">
+              <div className="row row--between row--wrap">
+                <Chip tone="paper">{formatRupiah(budget.totalSpent)} terpakai</Chip>
+                <strong className="small">
+                  {Math.round(budget.percent)}% dari {formatRupiah(budget.totalLimit)}
+                </strong>
+              </div>
+              <ProgressBar percent={budget.percent} tone={budgetTone} label="Anggaran bulan ini" />
+              <div className="home-budget__list">
+                {topBudgets.map((row) => (
+                  <div className="home-budget__row" key={row.budget_id}>
+                    <span
+                      className="breakdown__dot"
+                      style={{ background: row.category_color }}
+                      aria-hidden="true"
+                    />
+                    <span>{row.category_name}</span>
+                    <strong>{Math.round(row.percent)}%</strong>
+                  </div>
+                ))}
+              </div>
+              <p className="tiny muted">
+                Peringatan muncul saat kategori mencapai 80% dan 100% batas.
+              </p>
+            </div>
+          )}
+        </Card>
 
         <div className="dashboard-grid">
           <div className="stack">
@@ -218,7 +308,6 @@ export function BerandaPage() {
                 <LoadingState label="Memuat transaksi..." />
               ) : recent.length === 0 ? (
                 <EmptyState
-                  mood="sleepy"
                   title="Belum ada transaksi"
                   message="Catat pemasukan atau pengeluaran pertamamu supaya saldo mulai terhitung."
                   actionLabel="Catat sekarang"

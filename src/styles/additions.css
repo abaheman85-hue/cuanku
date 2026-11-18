@@ -1,0 +1,430 @@
+/* ==========================================================================
+   Fitur 2.1: anggaran, tabungan target, dan peringatan
+   ========================================================================== */
+
+.progress__fill--warn {
+  background: #ff9f43;
+}
+
+.progress__fill--danger {
+  background: var(--negative);
+}
+
+.hero__savings {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 12px;
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 2px 2px 0 var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    transform 0.15s var(--ease),
+    box-shadow 0.15s var(--ease);
+}
+
+.hero__savings:hover {
+  background: var(--mint);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.hero__savings svg {
+  width: 16px;
+  height: 16px;
+}
+
+.home-budget__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.home-budget__row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--paper);
+  font-size: 12px;
+}
+
+.home-budget__row strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-summary,
+.savings-summary {
+  display: grid;
+  gap: 14px;
+  background: var(--bg-deep);
+}
+
+.budget-summary__amount {
+  margin-top: 6px;
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-list {
+  display: grid;
+  gap: 12px;
+}
+
+.budget-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+}
+
+.budget-row__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.budget-row__title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.budget-row__title strong {
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.budget-row__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.budget-unassigned {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.budget-unassigned__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 2.5px solid var(--ink);
+  border-radius: 13px;
+  background: var(--paper-soft);
+}
+
+.budget-unassigned__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.budget-tip {
+  background: var(--mint);
+}
+
+.budget-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: #ffd8a8;
+  box-shadow: var(--shadow-sm);
+  animation: banner-in 0.35s var(--ease) both;
+}
+
+.budget-alert > svg {
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
+
+.budget-alert__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.budget-alert__body strong {
+  font-size: 13.5px;
+}
+
+.budget-alert__body span {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.budget-alert__actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.budget-alert__actions .btn {
+  min-height: 36px;
+  padding: 6px 11px;
+  font-size: 12px;
+}
+
+.wishlist-tabs {
+  margin-bottom: 16px;
+}
+
+.wishlist-tabs .segmented {
+  max-width: 340px;
+}
+
+.savings-summary__target {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+
+.savings-summary__target > span {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.savings-summary__target strong {
+  font-size: clamp(16px, 3vw, 21px);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.reward-list {
+  display: grid;
+  gap: 12px;
+}
+
+.reward-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--lime);
+  overflow: hidden;
+}
+
+.reward-card__mascot {
+  width: min(150px, 34vw);
+  flex: none;
+}
+
+.reward-card__body {
+  min-width: 0;
+}
+
+.reward-card__body h2 {
+  font-size: clamp(20px, 4vw, 28px);
+  letter-spacing: -0.04em;
+}
+
+.reward-card__body p {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.savings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.savings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.savings-card--done {
+  opacity: 0.86;
+}
+
+.savings-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.savings-card__title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.savings-card__title h3 {
+  font-size: 16px;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.savings-card__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border: 2.5px solid var(--ink);
+  border-radius: 11px;
+  background: var(--mint);
+}
+
+.savings-card__icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.savings-card__numbers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.savings-card__numbers > div {
+  padding: 9px 11px;
+  border: 2.5px solid var(--ink);
+  border-radius: 12px;
+  background: var(--paper-soft);
+}
+
+.savings-card__numbers span {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.savings-card__numbers strong {
+  display: block;
+  margin-top: 2px;
+  font-size: clamp(14px, 3vw, 17px);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.savings-card__note {
+  line-height: 1.4;
+}
+
+.savings-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: auto;
+}
+
+.deposit-history {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.deposit-history__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 2.5px solid var(--ink);
+  border-radius: 13px;
+  background: var(--paper-soft);
+}
+
+.deposit-history__info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.deposit-history__info strong {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.deposit-history__info span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 720px) {
+  .budget-summary,
+  .savings-summary {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
+
+  .reward-card__mascot {
+    width: 170px;
+  }
+}
+
+@media (max-width: 560px) {
+  .budget-alert {
+    flex-wrap: wrap;
+  }
+
+  .budget-alert__actions {
+    width: 100%;
+  }
+
+  .reward-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .reward-card__mascot {
+    width: min(180px, 52vw);
+    align-self: center;
+  }
+
+  .budget-row__foot {
+    flex-wrap: wrap;
+  }
+}

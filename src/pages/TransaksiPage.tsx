@@ -167,7 +167,6 @@ export function TransaksiPage() {
             <LoadingState label="Memuat transaksi..." />
           ) : transactions.length === 0 ? (
             <EmptyState
-              mood="sleepy"
               title={filter === 'all' ? 'Belum ada transaksi bulan ini' : 'Tidak ada yang cocok'}
               message={
                 filter === 'all'

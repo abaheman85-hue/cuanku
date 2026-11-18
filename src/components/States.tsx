@@ -2,16 +2,14 @@ import type { ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
-import { Mascot, type MascotMood } from './Mascot';
+import { Mascot } from './Mascot';
 
 export function EmptyState({
-  mood = 'sleepy',
   title,
   message,
   actionLabel,
   onAction,
 }: {
-  mood?: MascotMood;
   title: string;
   message: string;
   actionLabel?: string;
@@ -19,7 +17,7 @@ export function EmptyState({
 }) {
   return (
     <Card dashed className="empty">
-      <Mascot mood={mood} className="empty__mascot" decorative />
+      <Mascot className="empty__mascot" decorative />
       <h3>{title}</h3>
       <p>{message}</p>
       {actionLabel && onAction ? (

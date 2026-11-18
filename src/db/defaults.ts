@@ -21,14 +21,22 @@ export const DEFAULT_CATEGORIES: readonly DefaultCategory[] = [
   { name: 'Makan', type: 'expense', color: '#FFD166' },
   { name: 'Transport', type: 'expense', color: '#A9D6FF' },
   { name: 'Belanja', type: 'expense', color: '#FFC2E2' },
+  { name: 'Jajan', type: 'expense', color: '#FFB08A' },
   { name: 'Tagihan', type: 'expense', color: '#D9C7FF' },
   { name: 'Hiburan', type: 'expense', color: '#FFB08A' },
   { name: 'Kesehatan', type: 'expense', color: '#B9F5D8' },
   { name: 'Pendidikan', type: 'expense', color: '#C8F560' },
+  { name: 'Me time', type: 'expense', color: '#D9C7FF' },
   { name: 'Lainnya', type: 'expense', color: '#D8D4CC' },
   { name: 'Gaji', type: 'income', color: '#C8F560' },
   { name: 'Bonus', type: 'income', color: '#FFD166' },
   { name: 'Pemasukan lain', type: 'income', color: '#B9F5D8' },
+];
+
+/** Kategori baru untuk fitur anggaran & reward; ditambahkan ke data lama sekali. */
+export const ADDED_DEFAULT_CATEGORIES: readonly DefaultCategory[] = [
+  { name: 'Jajan', type: 'expense', color: '#FFB08A' },
+  { name: 'Me time', type: 'expense', color: '#D9C7FF' },
 ];
 
 export function defaultCategoryRows(createdAt: string): Omit<Category, 'id'>[] {

@@ -38,10 +38,11 @@ import { useLiveQuery } from '../hooks/useLiveQuery';
 import { useFeedback } from '../context/Feedback';
 import { Button, IconButton } from '../components/ui/Button';
 import { Badge, Card, Chip } from '../components/ui/Card';
-import { Field, MoneyInput } from '../components/ui/Field';
+import { Field, MoneyInput, SegmentedControl } from '../components/ui/Field';
 import { Modal } from '../components/ui/Modal';
 import { ProgressBar } from '../components/ProgressBar';
 import { WishlistForm } from '../components/WishlistForm';
+import { SavingsSection } from '../components/SavingsSection';
 import { EmptyState, ErrorState, InlineEmpty, LoadingState } from '../components/States';
 import { Mascot } from '../components/Mascot';
 
@@ -183,6 +184,14 @@ export function WishlistPage() {
   const [celebrating, setCelebrating] = useState<string | null>(null);
   const addRequested = searchParams.get('tambah') === '1';
   const formOpen = manualFormOpen || addRequested;
+  const tab = searchParams.get('tab') === 'tabungan' ? 'tabungan' : 'wishlist';
+
+  const switchTab = (value: 'wishlist' | 'tabungan') => {
+    const next = new URLSearchParams(searchParams);
+    if (value === 'tabungan') next.set('tab', 'tabungan');
+    else next.delete('tab');
+    setSearchParams(next, { replace: true });
+  };
 
   const [fundsText, setFundsText] = useState('');
   const [planText, setPlanText] = useState('');
@@ -332,358 +341,383 @@ export function WishlistPage() {
           <span className="eyebrow">
             <Gift aria-hidden="true" /> Wishlist
           </span>
-          <h1 className="page-title">Barang impian, disiapkan pelan-pelan</h1>
+          <h1 className="page-title">
+            {tab === 'wishlist'
+              ? 'Barang impian, disiapkan pelan-pelan'
+              : 'Tabungan target, diraih pelan-pelan'}
+          </h1>
           <p className="page-subtitle">
-            Simpan target, catat dana yang kamu sisihkan, dan beri jeda 7 hari sebelum membeli.
+            {tab === 'wishlist'
+              ? 'Simpan target, catat dana yang kamu sisihkan, dan beri jeda 7 hari sebelum membeli.'
+              : 'Sisihkan dana untuk tujuan tertentu. Setelah tercapai, ambil reward me time sekali.'}
           </p>
         </div>
         <div className="page-actions">
-          <Button variant="primary" icon={<Plus />} onClick={openCreate}>
-            Tambah wishlist
-          </Button>
+          {tab === 'wishlist' ? (
+            <Button variant="primary" icon={<Plus />} onClick={openCreate}>
+              Tambah wishlist
+            </Button>
+          ) : null}
         </div>
       </header>
 
-      {wishlistQuery.error || totalsQuery.error ? (
-        <ErrorState message={wishlistQuery.error ?? totalsQuery.error ?? 'Gagal memuat wishlist.'} />
-      ) : null}
-
-      <div className="stack">
-        <Card className="wishlist-summary">
-          <div>
-            <span className="eyebrow">
-              <Wallet aria-hidden="true" /> Ringkasan wishlist
-            </span>
-            <p className="hero__balance" style={{ marginTop: 6 }}>
-              {formatRupiah(totals.remaining)}
-            </p>
-            <p className="small muted">Sisa dana yang perlu disiapkan untuk semua wishlist aktif.</p>
-            <div className="row row--wrap" style={{ marginTop: 10 }}>
-              <Chip tone="paper">{totals.activeCount} aktif</Chip>
-              <Chip tone="lime">{totals.purchasedCount} sudah dibeli</Chip>
-            </div>
-          </div>
-          <div className="stack stack--sm">
-            <div className="wishlist-summary__numbers">
-              <div className="wishlist-summary__item">
-                <span>Target</span>
-                <strong>{formatRupiah(totals.target)}</strong>
-              </div>
-              <div className="wishlist-summary__item">
-                <span>Terkumpul</span>
-                <strong>{formatRupiah(totals.saved)}</strong>
-              </div>
-            </div>
-            <ProgressBar percent={percent} label="Kemajuan total wishlist" />
-            <p className="tiny">
-              {Math.round(percent)}% terkumpul • Dana wishlist tidak mengurangi saldo transaksi.
-            </p>
-          </div>
-        </Card>
-
-        {wishlistQuery.loading ? (
-          <Card>
-            <LoadingState label="Memuat wishlist..." />
-          </Card>
-        ) : items.length === 0 ? (
-          <EmptyState
-            mood="happy"
-            title="Wishlist masih kosong"
-            message="Tulis barang yang kamu inginkan. Masa tunggu 7 hari membantu menahan pembelian impulsif."
-            actionLabel="Tambah wishlist pertama"
-            onAction={openCreate}
-          />
-        ) : (
-          <>
-            <div>
-              <div className="wishlist-section-head">
-                <h2>Sedang disiapkan</h2>
-                <span className="small muted">{active.length} barang</span>
-              </div>
-              {active.length === 0 ? (
-                <Card dashed>
-                  <InlineEmpty>
-                    Semua wishlist sudah dibeli. Tambahkan barang baru kapan saja.
-                  </InlineEmpty>
-                </Card>
-              ) : (
-                <div className="wishlist-grid">
-                  {active.map((item) => (
-                    <WishlistCard
-                      key={item.id}
-                      item={item}
-                      now={now}
-                      onOpen={() => openDetail(item)}
-                      onBuy={() => void attemptPurchase(item)}
-                      onEdit={() => openEdit(item)}
-                      onDelete={() => void handleDelete(item)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {purchased.length > 0 ? (
-              <div>
-                <div className="wishlist-section-head">
-                  <h2>Sudah dibeli</h2>
-                  <span className="small muted">{purchased.length} barang</span>
-                </div>
-                <div className="wishlist-grid">
-                  {purchased.map((item) => (
-                    <WishlistCard
-                      key={item.id}
-                      item={item}
-                      now={now}
-                      onOpen={() => openDetail(item)}
-                      onBuy={() => void attemptPurchase(item)}
-                      onEdit={() => openEdit(item)}
-                      onDelete={() => void handleDelete(item)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </>
-        )}
+      <div className="wishlist-tabs">
+        <SegmentedControl
+          value={tab}
+          onChange={switchTab}
+          options={[
+            { value: 'wishlist', label: 'Wishlist' },
+            { value: 'tabungan', label: 'Tabungan' },
+          ]}
+          label="Pilih daftar"
+        />
       </div>
 
-      <Button
-        className="fab"
-        variant="primary"
-        aria-label="Tambah wishlist baru"
-        onClick={openCreate}
-      >
-        <Plus aria-hidden="true" />
-      </Button>
+      {tab === 'tabungan' ? (
+        <SavingsSection />
+      ) : (
+        <>
+          {wishlistQuery.error || totalsQuery.error ? (
+            <ErrorState message={wishlistQuery.error ?? totalsQuery.error ?? 'Gagal memuat wishlist.'} />
+          ) : null}
 
-      <WishlistForm open={formOpen} onClose={closeForm} item={editing} />
-
-      <Modal
-        open={detail !== null}
-        onClose={() => setDetailId(null)}
-        title={detail?.name}
-        subtitle={
-          detail
-            ? `${formatRupiah(detail.price)} • ${statusInfo(detail, now).label}`
-            : undefined
-        }
-        footer={
-          detail ? (
-            detail.purchased === 1 ? (
-              <>
-                <Button onClick={() => setDetailId(null)}>Tutup</Button>
-                <Button
-                  variant="primary"
-                  onClick={() => void markPurchased(detail, false)}
-                >
-                  Batalkan status dibeli
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  icon={<Pencil />}
-                  onClick={() => {
-                    openEdit(detail);
-                  }}
-                >
-                  Ubah
-                </Button>
-                <Button
-                  variant="primary"
-                  icon={<ShoppingBag />}
-                  onClick={() => void attemptPurchase(detail)}
-                >
-                  Beli sekarang
-                </Button>
-              </>
-            )
-          ) : null
-        }
-      >
-        {detail ? (
-          <div className="wish-detail">
-            <div className="wish-detail__media">
-              {detail.image ? (
-                <img src={detail.image} alt={`Foto ${detail.name}`} />
-              ) : (
-                <span className="wish-card__placeholder" aria-hidden="true">
-                  <Gift />
-                </span>
-              )}
-            </div>
-
-            <div className="row row--wrap">
-              <Badge tone={statusInfo(detail, now).status === 'ready' ? 'mint' : 'yellow'}>
-                {statusInfo(detail, now).label}
-              </Badge>
-              {detail.link ? (
-                <a
-                  className="wish-card__link"
-                  href={detail.link}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  Buka toko <ExternalLink size={12} aria-hidden="true" />
-                </a>
-              ) : null}
-              <Button
-                size="sm"
-                variant="ghost"
-                icon={<Trash2 />}
-                onClick={() => void handleDelete(detail)}
-              >
-                Hapus
-              </Button>
-            </div>
-
-            <div className="wish-detail__prices">
-              <div className="wish-detail__price-box">
-                <span>Harga</span>
-                <strong>{formatRupiah(detail.price)}</strong>
-              </div>
-              <div className="wish-detail__price-box">
-                <span>Terkumpul</span>
-                <strong>{formatRupiah(detail.saved_amount)}</strong>
-              </div>
-              <div className="wish-detail__price-box">
-                <span>Sisa</span>
-                <strong>{formatRupiah(Math.max(0, detail.price - detail.saved_amount))}</strong>
-              </div>
-              <div className="wish-detail__price-box">
-                <span>Rencana / bulan</span>
-                <strong>{formatRupiah(detail.monthly_plan)}</strong>
-              </div>
-            </div>
-
-            <ProgressBar
-              percent={progressPercent(detail.price, detail.saved_amount)}
-              done={isTargetReached(detail.price, detail.saved_amount)}
-              label={`Kemajuan tabungan ${detail.name}`}
-            />
-
-            {detail.purchased === 1 ? (
-              <p className="small muted">
-                {detail.purchased_at
-                  ? `Ditandai dibeli pada ${dateLabel(detail.purchased_at.slice(0, 10))}.`
-                  : 'Item ini sudah ditandai dibeli.'}
-              </p>
-            ) : (
-              <div className="notice">
-                <Timer aria-hidden="true" />
-                <span>
-                  {getWaitInfo(detail.created_at, now).waiting
-                    ? `Masa tunggu 7 hari: siap dibeli sekitar ${dateLabel(
-                        toDateKey(getWaitInfo(detail.created_at, now).readyAt),
-                      )}. Kamu tetap boleh membeli lebih awal, tetapi akan ada konfirmasi tambahan.`
-                    : 'Masa tunggu sudah selesai. Ambil keputusan dengan tenang sebelum membeli.'}
-                </span>
-              </div>
-            )}
-
-            <p className="small muted">{estimateText(detail, now)}</p>
-
-            {detail.note ? (
+          <div className="stack">
+            <Card className="wishlist-summary">
               <div>
-                <span className="field__label">Catatan</span>
-                <p className="small">{detail.note}</p>
+                <span className="eyebrow">
+                  <Wallet aria-hidden="true" /> Ringkasan wishlist
+                </span>
+                <p className="hero__balance" style={{ marginTop: 6 }}>
+                  {formatRupiah(totals.remaining)}
+                </p>
+                <p className="small muted">Sisa dana yang perlu disiapkan untuk semua wishlist aktif.</p>
+                <div className="row row--wrap" style={{ marginTop: 10 }}>
+                  <Chip tone="paper">{totals.activeCount} aktif</Chip>
+                  <Chip tone="lime">{totals.purchasedCount} sudah dibeli</Chip>
+                </div>
               </div>
-            ) : null}
+              <div className="stack stack--sm">
+                <div className="wishlist-summary__numbers">
+                  <div className="wishlist-summary__item">
+                    <span>Target</span>
+                    <strong>{formatRupiah(totals.target)}</strong>
+                  </div>
+                  <div className="wishlist-summary__item">
+                    <span>Terkumpul</span>
+                    <strong>{formatRupiah(totals.saved)}</strong>
+                  </div>
+                </div>
+                <ProgressBar percent={percent} label="Kemajuan total wishlist" />
+                <p className="tiny">
+                  {Math.round(percent)}% terkumpul • Dana wishlist tidak mengurangi saldo transaksi.
+                </p>
+              </div>
+            </Card>
 
-            {detail.purchased === 0 ? (
+            {wishlistQuery.loading ? (
+              <Card>
+                <LoadingState label="Memuat wishlist..." />
+              </Card>
+            ) : items.length === 0 ? (
+              <EmptyState
+                title="Wishlist masih kosong"
+                message="Tulis barang yang kamu inginkan. Masa tunggu 7 hari membantu menahan pembelian impulsif."
+                actionLabel="Tambah wishlist pertama"
+                onAction={openCreate}
+              />
+            ) : (
               <>
-                <div className="stack stack--sm">
-                  <Field
-                    label="Dana terkumpul"
-                    htmlFor="wishlist-funds"
-                    hint="Ubah manual sesuai dana yang benar-benar kamu sisihkan."
-                  >
-                    <MoneyInput
-                      id="wishlist-funds"
-                      value={fundsText}
-                      onValueChange={setFundsText}
-                    />
-                    <div className="quick-amounts">
-                      {QUICK_FUNDS.map((amount) => (
-                        <button
-                          key={amount}
-                          type="button"
-                          className="chip"
-                          onClick={() => bumpFunds(amount)}
-                        >
-                          +{formatCompactRupiah(amount)}
-                        </button>
+                <div>
+                  <div className="wishlist-section-head">
+                    <h2>Sedang disiapkan</h2>
+                    <span className="small muted">{active.length} barang</span>
+                  </div>
+                  {active.length === 0 ? (
+                    <Card dashed>
+                      <InlineEmpty>
+                        Semua wishlist sudah dibeli. Tambahkan barang baru kapan saja.
+                      </InlineEmpty>
+                    </Card>
+                  ) : (
+                    <div className="wishlist-grid">
+                      {active.map((item) => (
+                        <WishlistCard
+                          key={item.id}
+                          item={item}
+                          now={now}
+                          onOpen={() => openDetail(item)}
+                          onBuy={() => void attemptPurchase(item)}
+                          onEdit={() => openEdit(item)}
+                          onDelete={() => void handleDelete(item)}
+                        />
                       ))}
                     </div>
-                  </Field>
-                  <Button
-                    variant="mint"
-                    size="sm"
-                    icon={<Wallet />}
-                    onClick={() => void saveFunds()}
-                    disabled={fundBusy}
-                  >
-                    {fundBusy ? 'Menyimpan...' : 'Simpan dana'}
-                  </Button>
+                  )}
                 </div>
 
-                <div className="stack stack--sm">
-                  <Field
-                    label="Rencana tabungan per bulan"
-                    htmlFor="wishlist-plan-detail"
-                    hint="Dipakai untuk memperkirakan kapan target tercapai."
-                  >
-                    <MoneyInput
-                      id="wishlist-plan-detail"
-                      value={planText}
-                      onValueChange={setPlanText}
-                    />
-                  </Field>
-                  <Button
-                    size="sm"
-                    onClick={() => void savePlan()}
-                    disabled={planBusy}
-                  >
-                    {planBusy ? 'Menyimpan...' : 'Simpan rencana'}
-                  </Button>
-                </div>
+                {purchased.length > 0 ? (
+                  <div>
+                    <div className="wishlist-section-head">
+                      <h2>Sudah dibeli</h2>
+                      <span className="small muted">{purchased.length} barang</span>
+                    </div>
+                    <div className="wishlist-grid">
+                      {purchased.map((item) => (
+                        <WishlistCard
+                          key={item.id}
+                          item={item}
+                          now={now}
+                          onOpen={() => openDetail(item)}
+                          onBuy={() => void attemptPurchase(item)}
+                          onEdit={() => openEdit(item)}
+                          onDelete={() => void handleDelete(item)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </>
-            ) : null}
+            )}
           </div>
-        ) : null}
-      </Modal>
 
-      <Modal
-        open={celebrating !== null}
-        onClose={() => setCelebrating(null)}
-        size="sm"
-        footer={
-          <Button variant="primary" block onClick={() => setCelebrating(null)}>
-            Mantap
+          <Button
+            className="fab"
+            variant="primary"
+            aria-label="Tambah wishlist baru"
+            onClick={openCreate}
+          >
+            <Plus aria-hidden="true" />
           </Button>
-        }
-      >
-        <div className="confetti" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="celebrate">
-          <Mascot mood="cheering" className="celebrate__mascot" decorative />
-          <h2>Selamat!</h2>
-          <p>
-            <strong>{celebrating}</strong> sudah pindah ke bagian &ldquo;Sudah dibeli&rdquo;.
-            Semoga bermanfaat, ya!
-          </p>
-          <p className="tiny muted">
-            Dana wishlist tetap terpisah dan tidak mengubah saldo transaksi.
-          </p>
-        </div>
-      </Modal>
+
+          <WishlistForm open={formOpen} onClose={closeForm} item={editing} />
+
+          <Modal
+            open={detail !== null}
+            onClose={() => setDetailId(null)}
+            title={detail?.name}
+            subtitle={
+              detail
+                ? `${formatRupiah(detail.price)} • ${statusInfo(detail, now).label}`
+                : undefined
+            }
+            footer={
+              detail ? (
+                detail.purchased === 1 ? (
+                  <>
+                    <Button onClick={() => setDetailId(null)}>Tutup</Button>
+                    <Button
+                      variant="primary"
+                      onClick={() => void markPurchased(detail, false)}
+                    >
+                      Batalkan status dibeli
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      icon={<Pencil />}
+                      onClick={() => {
+                        openEdit(detail);
+                      }}
+                    >
+                      Ubah
+                    </Button>
+                    <Button
+                      variant="primary"
+                      icon={<ShoppingBag />}
+                      onClick={() => void attemptPurchase(detail)}
+                    >
+                      Beli sekarang
+                    </Button>
+                  </>
+                )
+              ) : null
+            }
+          >
+            {detail ? (
+              <div className="wish-detail">
+                <div className="wish-detail__media">
+                  {detail.image ? (
+                    <img src={detail.image} alt={`Foto ${detail.name}`} />
+                  ) : (
+                    <span className="wish-card__placeholder" aria-hidden="true">
+                      <Gift />
+                    </span>
+                  )}
+                </div>
+
+                <div className="row row--wrap">
+                  <Badge tone={statusInfo(detail, now).status === 'ready' ? 'mint' : 'yellow'}>
+                    {statusInfo(detail, now).label}
+                  </Badge>
+                  {detail.link ? (
+                    <a
+                      className="wish-card__link"
+                      href={detail.link}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                    >
+                      Buka toko <ExternalLink size={12} aria-hidden="true" />
+                    </a>
+                  ) : null}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={<Trash2 />}
+                    onClick={() => void handleDelete(detail)}
+                  >
+                    Hapus
+                  </Button>
+                </div>
+
+                <div className="wish-detail__prices">
+                  <div className="wish-detail__price-box">
+                    <span>Harga</span>
+                    <strong>{formatRupiah(detail.price)}</strong>
+                  </div>
+                  <div className="wish-detail__price-box">
+                    <span>Terkumpul</span>
+                    <strong>{formatRupiah(detail.saved_amount)}</strong>
+                  </div>
+                  <div className="wish-detail__price-box">
+                    <span>Sisa</span>
+                    <strong>{formatRupiah(Math.max(0, detail.price - detail.saved_amount))}</strong>
+                  </div>
+                  <div className="wish-detail__price-box">
+                    <span>Rencana / bulan</span>
+                    <strong>{formatRupiah(detail.monthly_plan)}</strong>
+                  </div>
+                </div>
+
+                <ProgressBar
+                  percent={progressPercent(detail.price, detail.saved_amount)}
+                  done={isTargetReached(detail.price, detail.saved_amount)}
+                  label={`Kemajuan tabungan ${detail.name}`}
+                />
+
+                {detail.purchased === 1 ? (
+                  <p className="small muted">
+                    {detail.purchased_at
+                      ? `Ditandai dibeli pada ${dateLabel(detail.purchased_at.slice(0, 10))}.`
+                      : 'Item ini sudah ditandai dibeli.'}
+                  </p>
+                ) : (
+                  <div className="notice">
+                    <Timer aria-hidden="true" />
+                    <span>
+                      {getWaitInfo(detail.created_at, now).waiting
+                        ? `Masa tunggu 7 hari: siap dibeli sekitar ${dateLabel(
+                            toDateKey(getWaitInfo(detail.created_at, now).readyAt),
+                          )}. Kamu tetap boleh membeli lebih awal, tetapi akan ada konfirmasi tambahan.`
+                        : 'Masa tunggu sudah selesai. Ambil keputusan dengan tenang sebelum membeli.'}
+                    </span>
+                  </div>
+                )}
+
+                <p className="small muted">{estimateText(detail, now)}</p>
+
+                {detail.note ? (
+                  <div>
+                    <span className="field__label">Catatan</span>
+                    <p className="small">{detail.note}</p>
+                  </div>
+                ) : null}
+
+                {detail.purchased === 0 ? (
+                  <>
+                    <div className="stack stack--sm">
+                      <Field
+                        label="Dana terkumpul"
+                        htmlFor="wishlist-funds"
+                        hint="Ubah manual sesuai dana yang benar-benar kamu sisihkan."
+                      >
+                        <MoneyInput
+                          id="wishlist-funds"
+                          value={fundsText}
+                          onValueChange={setFundsText}
+                        />
+                        <div className="quick-amounts">
+                          {QUICK_FUNDS.map((amount) => (
+                            <button
+                              key={amount}
+                              type="button"
+                              className="chip"
+                              onClick={() => bumpFunds(amount)}
+                            >
+                              +{formatCompactRupiah(amount)}
+                            </button>
+                          ))}
+                        </div>
+                      </Field>
+                      <Button
+                        variant="mint"
+                        size="sm"
+                        icon={<Wallet />}
+                        onClick={() => void saveFunds()}
+                        disabled={fundBusy}
+                      >
+                        {fundBusy ? 'Menyimpan...' : 'Simpan dana'}
+                      </Button>
+                    </div>
+
+                    <div className="stack stack--sm">
+                      <Field
+                        label="Rencana tabungan per bulan"
+                        htmlFor="wishlist-plan-detail"
+                        hint="Dipakai untuk memperkirakan kapan target tercapai."
+                      >
+                        <MoneyInput
+                          id="wishlist-plan-detail"
+                          value={planText}
+                          onValueChange={setPlanText}
+                        />
+                      </Field>
+                      <Button
+                        size="sm"
+                        onClick={() => void savePlan()}
+                        disabled={planBusy}
+                      >
+                        {planBusy ? 'Menyimpan...' : 'Simpan rencana'}
+                      </Button>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </Modal>
+
+          <Modal
+            open={celebrating !== null}
+            onClose={() => setCelebrating(null)}
+            size="sm"
+            footer={
+              <Button variant="primary" block onClick={() => setCelebrating(null)}>
+                Mantap
+              </Button>
+            }
+          >
+            <div className="confetti" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="celebrate">
+              <Mascot className="celebrate__mascot" decorative />
+              <h2>Selamat!</h2>
+              <p>
+                <strong>{celebrating}</strong> sudah pindah ke bagian &ldquo;Sudah dibeli&rdquo;.
+                Semoga bermanfaat, ya!
+              </p>
+              <p className="tiny muted">
+                Dana wishlist tetap terpisah dan tidak mengubah saldo transaksi.
+              </p>
+            </div>
+          </Modal>
+        </>
+      )}
     </div>
   );
 }

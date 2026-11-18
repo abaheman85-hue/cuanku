@@ -5,6 +5,7 @@ import '@fontsource/space-grotesk/latin-500.css';
 import '@fontsource/space-grotesk/latin-600.css';
 import '@fontsource/space-grotesk/latin-700.css';
 import './styles/global.css';
+import './styles/additions.css';
 import { App } from './App';
 import { Mascot } from './components/Mascot';
 import { Button } from './components/ui/Button';
@@ -15,7 +16,7 @@ type BootState = { status: 'loading' } | { status: 'ready' } | { status: 'error'
 function BootScreen({ error, onRetry }: { error?: string; onRetry?: () => void }) {
   return (
     <div className="boot">
-      <Mascot mood={error ? 'panic' : 'sleepy'} className="boot__mascot" decorative />
+      <Mascot className="boot__mascot" decorative />
       <h1>CuanKu</h1>
       {error ? (
         <>

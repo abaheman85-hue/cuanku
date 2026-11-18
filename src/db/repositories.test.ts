@@ -4,28 +4,40 @@ import { DEFAULT_CATEGORIES } from './defaults';
 import { DEFAULT_SETTINGS } from './types';
 import { buildBackupFile, parseBackup } from '../lib/backup-format';
 import {
+  addSavingsDeposit,
   addWishlistFunds,
+  checkBudgetAlerts,
+  claimSavingsReward,
   countAllTransactions,
   countCategoryUsage,
   createCategory,
+  createSavingsGoal,
   createTransaction,
   createWishlistItem,
+  deleteBudget,
   deleteCategory,
+  deleteSavingsDeposit,
   deleteTransaction,
   deleteWishlistItem,
+  ensureBudgetMonth,
+  getBudgetOverview,
   getExpenseByCategory,
   getMonthSummary,
   getMonthlySeries,
+  getSavingsTotals,
   getSettings,
   getTransactionById,
   getWishlistById,
   getWishlistTotals,
   importBackupData,
+  listBudgetAlerts,
   listCategories,
   listRecentTransactions,
+  listSavingsGoals,
   listTransactions,
   listWishlist,
   readBackupData,
+  saveBudget,
   saveSettings,
   setWishlistPlan,
   setWishlistPurchased,
@@ -34,6 +46,7 @@ import {
   updateTransaction,
   updateWishlistItem,
 } from './repositories';
+import { currentMonthKey, toDateKey } from '../lib/dates';
 
 let counter = 0;
 const opened: CuanKuDatabase[] = [];
@@ -49,6 +62,12 @@ async function freshDb(): Promise<CuanKuDatabase> {
 afterEach(async () => {
   await Promise.all(opened.splice(0).map((database) => database.delete()));
 });
+
+async function expenseCategoryId(database: CuanKuDatabase, name: string): Promise<number> {
+  const row = (await listCategories(database, 'expense')).find((item) => item.name === name);
+  if (!row?.id) throw new Error(`Kategori ${name} tidak ditemukan.`);
+  return row.id;
+}
 
 describe('initDatabase', () => {
   it('mengisi kategori dan pengaturan default sekali saja', async () => {
@@ -380,6 +399,147 @@ describe('pengaturan', () => {
   });
 });
 
+describe('anggaran', () => {
+  it('menyalin anggaran bulan sebelumnya sekali saja', async () => {
+    const database = await freshDb();
+    const jajanId = await expenseCategoryId(database, 'Jajan');
+    await saveBudget(database, { month: '2026-01', category_id: jajanId, amount: 500000 });
+    await createTransaction(database, {
+      type: 'expense',
+      amount: 200000,
+      category_id: jajanId,
+      date: '2026-01-10',
+      note: null,
+    });
+
+    await ensureBudgetMonth(database, '2026-02');
+    await ensureBudgetMonth(database, '2026-02');
+
+    const january = await getBudgetOverview(database, '2026-01');
+    const february = await getBudgetOverview(database, '2026-02');
+    expect(january.rows[0]).toMatchObject({
+      category_name: 'Jajan',
+      amount: 500000,
+      spent: 200000,
+      level: 0,
+    });
+    expect(february.rows).toHaveLength(1);
+    expect(february.rows[0]).toMatchObject({ amount: 500000, spent: 0 });
+
+    await deleteBudget(database, february.rows[0].budget_id);
+    await ensureBudgetMonth(database, '2026-02');
+    expect((await getBudgetOverview(database, '2026-02')).rows).toHaveLength(0);
+  });
+
+  it('memberi peringatan 80% dan 100% sekali per kategori per bulan', async () => {
+    const database = await freshDb();
+    const jajanId = await expenseCategoryId(database, 'Jajan');
+    const meTimeId = await expenseCategoryId(database, 'Me time');
+    await saveBudget(database, { month: '2026-01', category_id: jajanId, amount: 500000 });
+
+    await createTransaction(database, {
+      type: 'expense',
+      amount: 420000,
+      category_id: jajanId,
+      date: '2026-01-08',
+      note: null,
+    });
+    expect(await checkBudgetAlerts(database, '2026-01')).toMatchObject([
+      { category_id: jajanId, level: 80 },
+    ]);
+    expect(await checkBudgetAlerts(database, '2026-01')).toEqual([]);
+
+    // Satu transaksi yang melompat dari 84% ke 204% hanya melaporkan level 100.
+    await createTransaction(database, {
+      type: 'expense',
+      amount: 600000,
+      category_id: jajanId,
+      date: '2026-01-09',
+      note: null,
+    });
+    expect(await checkBudgetAlerts(database, '2026-01')).toMatchObject([
+      { category_id: jajanId, level: 100 },
+    ]);
+    expect(
+      (await listBudgetAlerts(database, '2026-01'))
+        .map((row) => row.level)
+        .sort((a, b) => a - b),
+    ).toEqual([80, 100]);
+
+    await saveBudget(database, { month: '2026-01', category_id: meTimeId, amount: 200000 });
+    await createTransaction(database, {
+      type: 'expense',
+      amount: 250000,
+      category_id: meTimeId,
+      date: '2026-01-10',
+      note: null,
+    });
+    expect(await checkBudgetAlerts(database, '2026-01')).toMatchObject([
+      { category_id: meTimeId, level: 100 },
+    ]);
+    expect(
+      (await listBudgetAlerts(database, '2026-01'))
+        .map((row) => row.level)
+        .sort((a, b) => a - b),
+    ).toEqual([80, 80, 100, 100]);
+    expect(await countAllTransactions(database)).toBe(3);
+  });
+});
+
+describe('tabungan target', () => {
+  it('memisahkan setoran dari saldo dan membatasi klaim reward me time', async () => {
+    const database = await freshDb();
+    const month = currentMonthKey();
+    const today = toDateKey();
+    const meTimeId = await expenseCategoryId(database, 'Me time');
+    const goalId = await createSavingsGoal(database, {
+      name: 'Liburan',
+      target_amount: 500000,
+      note: null,
+    });
+
+    await addSavingsDeposit(database, goalId, { amount: 500000, date: today, note: null });
+    const goal = (await listSavingsGoals(database))[0];
+    expect(goal).toMatchObject({
+      saved: 500000,
+      remaining: 0,
+      percent: 100,
+      achieved: true,
+      completed: false,
+    });
+    expect(await getMonthSummary(database, month)).toEqual({
+      income: 0,
+      expense: 0,
+      balance: 0,
+      count: 0,
+    });
+
+    await saveBudget(database, { month, category_id: meTimeId, amount: 100000 });
+    expect((await getBudgetOverview(database, month)).rows[0].spent).toBe(0);
+
+    await expect(claimSavingsReward(database, goalId, 600000)).rejects.toThrow(/melebihi/i);
+    const claim = await claimSavingsReward(database, goalId, 200000);
+    expect(claim).toMatchObject({
+      goal_id: goalId,
+      amount: 200000,
+      category_name: 'Me time',
+    });
+    expect(await countAllTransactions(database)).toBe(1);
+    expect(await getMonthSummary(database, month)).toMatchObject({ expense: 200000, count: 1 });
+    expect((await getBudgetOverview(database, month)).rows[0].spent).toBe(200000);
+    expect((await listSavingsGoals(database))[0].completed).toBe(true);
+    expect(await getSavingsTotals(database)).toMatchObject({ saved: 0, completedCount: 1 });
+
+    await expect(claimSavingsReward(database, goalId, 10000)).rejects.toThrow(/sudah diklaim/i);
+    await expect(
+      addSavingsDeposit(database, goalId, { amount: 10000, date: today, note: null }),
+    ).rejects.toThrow(/selesai/i);
+    await expect(deleteSavingsDeposit(database, goal.deposits[0].id!)).rejects.toThrow(
+      /sudah selesai/i,
+    );
+  });
+});
+
 describe('backup database', () => {
   it('mengekspor dan mengimpor ulang seluruh data', async () => {
     const source = await freshDb();
@@ -404,6 +564,17 @@ describe('backup database', () => {
       monthly_plan: 250000,
     });
     await saveSettings(source, { reminder_enabled: true, reminder_hour: 8 });
+    await saveBudget(source, { month: '2026-01', category_id: categoryId, amount: 300000 });
+    const savingsGoalId = await createSavingsGoal(source, {
+      name: 'Liburan',
+      target_amount: 1000000,
+      note: 'Liburan akhir tahun',
+    });
+    await addSavingsDeposit(source, savingsGoalId, {
+      amount: 150000,
+      date: '2026-01-08',
+      note: null,
+    });
 
     const exported = await readBackupData(source);
     const payload = buildBackupFile({ ...exported, exportedAt: '2026-02-01T00:00:00.000Z' });
@@ -416,6 +587,9 @@ describe('backup database', () => {
     expect(imported.categories).toEqual(exported.categories);
     expect(imported.transactions).toEqual(exported.transactions);
     expect(imported.wishlist).toEqual(exported.wishlist);
+    expect(imported.budgets).toEqual(exported.budgets);
+    expect(imported.savingsGoals).toEqual(exported.savingsGoals);
+    expect(imported.savingsDeposits).toEqual(exported.savingsDeposits);
     expect(await getSettings(target)).toEqual(await getSettings(source));
     expect(await getWishlistTotals(target)).toMatchObject({ target: 1500000 });
   });

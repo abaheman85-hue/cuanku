@@ -2,19 +2,25 @@ import type {
   AppSettings,
   BackupFile,
   BackupImage,
+  Budget,
+  BudgetAlert,
+  BudgetAlertLevel,
+  BudgetMonth,
   Category,
   ParsedBackup,
+  SavingsDeposit,
+  SavingsGoal,
   Setting,
   Transaction,
   TransactionType,
   WishlistItem,
 } from '../db/types';
 import { DEFAULT_SETTINGS } from '../db/types';
-import { isValidDateKey, isoNow } from './dates';
+import { isValidDateKey, isValidMonthKey, isoNow } from './dates';
 import { settingsFromRows, settingsToRows } from './settings';
 
 export const BACKUP_APP = 'CuanKu' as const;
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 3;
 
 function fail(message: string): never {
   throw new Error(message);
@@ -185,7 +191,147 @@ function normalizeSettingsRows(value: unknown): Setting[] {
   return rows;
 }
 
-/** Memvalidasi file backup v1 (lama) maupun v2 (website). */
+function nextUniqueId(raw: unknown, used: Set<number>, next: { value: number }): number {
+  const original = positiveInteger(raw);
+  let id = original ?? next.value;
+  while (used.has(id)) id += 1;
+  used.add(id);
+  next.value = Math.max(next.value, id + 1);
+  return id;
+}
+
+function normalizeBudgets(value: unknown, idMap: Map<number, number>): Budget[] {
+  if (!Array.isArray(value)) return [];
+  const usedIds = new Set<number>();
+  const usedPairs = new Set<string>();
+  const next = { value: 1 };
+  const rows: Budget[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const month = text(item.month, 7);
+    const rawCategory = positiveInteger(item.category_id);
+    const categoryId = rawCategory === null ? null : (idMap.get(rawCategory) ?? null);
+    const amount = positiveInteger(item.amount);
+    if (!isValidMonthKey(month) || categoryId === null || amount === null) continue;
+    const pair = `${month}:${categoryId}`;
+    if (usedPairs.has(pair)) continue;
+    usedPairs.add(pair);
+    rows.push({
+      id: nextUniqueId(item.id, usedIds, next),
+      month,
+      category_id: categoryId,
+      amount,
+      created_at: text(item.created_at, 40, isoNow()),
+      updated_at: text(item.updated_at, 40, isoNow()),
+    });
+  }
+  return rows;
+}
+
+function normalizeBudgetMonths(value: unknown, budgets: Budget[]): BudgetMonth[] {
+  const months = new Set<string>();
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const month = isRecord(item) ? text(item.month, 7) : text(item, 7);
+      if (isValidMonthKey(month)) months.add(month);
+    }
+  }
+  // Backup lama tidak punya penanda; ambil dari bulan yang memiliki anggaran.
+  for (const budget of budgets) months.add(budget.month);
+  return [...months]
+    .sort()
+    .map((month) => ({ month, initialized_at: isoNow() }));
+}
+
+function normalizeBudgetAlerts(value: unknown, idMap: Map<number, number>): BudgetAlert[] {
+  if (!Array.isArray(value)) return [];
+  const usedIds = new Set<number>();
+  const usedKeys = new Set<string>();
+  const next = { value: 1 };
+  const rows: BudgetAlert[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const month = text(item.month, 7);
+    const rawCategory = positiveInteger(item.category_id);
+    const categoryId = rawCategory === null ? null : (idMap.get(rawCategory) ?? null);
+    const level = Number(item.level);
+    if (!isValidMonthKey(month) || categoryId === null || (level !== 80 && level !== 100)) continue;
+    const key = `${month}:${categoryId}:${level}`;
+    if (usedKeys.has(key)) continue;
+    usedKeys.add(key);
+    rows.push({
+      id: nextUniqueId(item.id, usedIds, next),
+      month,
+      category_id: categoryId,
+      level: level as BudgetAlertLevel,
+      notified_at: text(item.notified_at, 40, isoNow()),
+    });
+  }
+  return rows;
+}
+
+interface NormalizedSavingsGoals {
+  rows: SavingsGoal[];
+  idMap: Map<number, number>;
+}
+
+function normalizeSavingsGoals(value: unknown): NormalizedSavingsGoals {
+  const rows: SavingsGoal[] = [];
+  const idMap = new Map<number, number>();
+  const usedIds = new Set<number>();
+  const next = { value: 1 };
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => {
+      if (!isRecord(item)) fail(`Tabungan ke-${index + 1} rusak di file backup.`);
+      const name = text(item.name, 120);
+      if (!name) fail(`Tabungan ke-${index + 1} tidak memiliki nama.`);
+      const target = positiveInteger(item.target_amount);
+      if (target === null) fail(`Target tabungan ke-${index + 1} tidak valid.`);
+      const originalId = positiveInteger(item.id);
+      const id = nextUniqueId(item.id, usedIds, next);
+      if (originalId !== null) idMap.set(originalId, id);
+      const claimed = item.reward_claimed_at === null ? null : optionalText(item.reward_claimed_at, 40);
+      rows.push({
+        id,
+        name,
+        target_amount: target,
+        note: optionalText(item.note, 500),
+        created_at: text(item.created_at, 40, isoNow()),
+        achieved_at: item.achieved_at === null ? null : optionalText(item.achieved_at, 40),
+        reward_claimed_at: claimed,
+        reward_transaction_id: positiveInteger(item.reward_transaction_id),
+        reward_amount: nonNegative(item.reward_amount),
+      });
+    });
+  }
+  return { rows, idMap };
+}
+
+function normalizeSavingsDeposits(value: unknown, idMap: Map<number, number>): SavingsDeposit[] {
+  if (!Array.isArray(value)) return [];
+  const usedIds = new Set<number>();
+  const next = { value: 1 };
+  const rows: SavingsDeposit[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const rawGoal = positiveInteger(item.goal_id);
+    const goalId = rawGoal === null ? null : (idMap.get(rawGoal) ?? null);
+    const amount = positiveInteger(item.amount);
+    const date = text(item.date, 10);
+    if (goalId === null || amount === null || !isValidDateKey(date)) continue;
+    rows.push({
+      id: nextUniqueId(item.id, usedIds, next),
+      goal_id: goalId,
+      amount,
+      date,
+      note: optionalText(item.note, 300),
+      created_at: text(item.created_at, 40, isoNow()),
+    });
+  }
+  return rows;
+}
+
+/** Memvalidasi file backup v1, v2, dan v3. */
 export function parseBackup(
   rawText: string,
   defaults: AppSettings = DEFAULT_SETTINGS,
@@ -212,6 +358,11 @@ export function parseBackup(
   const settingsRowsInput = normalizeSettingsRows(raw.data.settings);
   const settings = settingsFromRows(settingsRowsInput, defaults);
   const settingsRows = settingsToRows(settings);
+  const budgets = normalizeBudgets(raw.data.budgets, idMap);
+  const budgetMonths = normalizeBudgetMonths(raw.data.budget_months, budgets);
+  const budgetAlerts = normalizeBudgetAlerts(raw.data.budget_alerts, idMap);
+  const savings = normalizeSavingsGoals(raw.data.savings_goals);
+  const savingsDeposits = normalizeSavingsDeposits(raw.data.savings_deposits, savings.idMap);
 
   return {
     app: BACKUP_APP,
@@ -222,6 +373,11 @@ export function parseBackup(
     wishlist,
     settingsRows,
     settings,
+    budgets,
+    budgetMonths,
+    budgetAlerts,
+    savingsGoals: savings.rows,
+    savingsDeposits,
   };
 }
 
@@ -230,6 +386,11 @@ export function buildBackupFile(input: {
   transactions: Transaction[];
   wishlist: WishlistItem[];
   settings: Setting[];
+  budgets?: Budget[];
+  budgetMonths?: BudgetMonth[];
+  budgetAlerts?: BudgetAlert[];
+  savingsGoals?: SavingsGoal[];
+  savingsDeposits?: SavingsDeposit[];
   exportedAt?: string;
 }): BackupFile {
   return {
@@ -241,6 +402,11 @@ export function buildBackupFile(input: {
       transactions: input.transactions,
       wishlist: input.wishlist,
       settings: input.settings,
+      budgets: input.budgets ?? [],
+      budget_months: input.budgetMonths ?? [],
+      budget_alerts: input.budgetAlerts ?? [],
+      savings_goals: input.savingsGoals ?? [],
+      savings_deposits: input.savingsDeposits ?? [],
     },
   };
 }

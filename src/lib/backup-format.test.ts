@@ -104,7 +104,7 @@ describe('parseBackup', () => {
     const payload = parseBackup(
       JSON.stringify({
         app: BACKUP_APP,
-        version: BACKUP_VERSION,
+        version: 2,
         exported_at: '2026-02-01T00:00:00.000Z',
         data: {
           ...raw.data,
@@ -115,6 +115,71 @@ describe('parseBackup', () => {
     );
     expect(payload.version).toBe(2);
     expect(payload.wishlist[0].image).toBe(dataUrl);
+  });
+
+  it('mengimpor backup v3 beserta anggaran dan tabungan', () => {
+    const raw = v1Backup();
+    const payload = parseBackup(
+      JSON.stringify({
+        app: BACKUP_APP,
+        version: 3,
+        exported_at: '2026-02-01T00:00:00.000Z',
+        data: {
+          ...raw.data,
+          budgets: [
+            {
+              id: 5,
+              month: '2026-01',
+              category_id: 1,
+              amount: 500000,
+              created_at: CREATED,
+              updated_at: CREATED,
+            },
+          ],
+          budget_months: [{ month: '2026-01', initialized_at: CREATED }],
+          budget_alerts: [
+            {
+              id: 7,
+              month: '2026-01',
+              category_id: 1,
+              level: 100,
+              notified_at: CREATED,
+            },
+          ],
+          savings_goals: [
+            {
+              id: 9,
+              name: 'Liburan',
+              target_amount: 2000000,
+              note: null,
+              created_at: CREATED,
+              achieved_at: null,
+              reward_claimed_at: null,
+              reward_transaction_id: null,
+              reward_amount: 0,
+            },
+          ],
+          savings_deposits: [
+            {
+              id: 11,
+              goal_id: 9,
+              amount: 250000,
+              date: '2026-01-05',
+              note: null,
+              created_at: CREATED,
+            },
+          ],
+        },
+      }),
+      DEFAULT_SETTINGS,
+    );
+
+    expect(payload.version).toBe(3);
+    expect(payload.budgets[0]).toMatchObject({ category_id: 1, amount: 500000 });
+    expect(payload.budgetMonths.map((row) => row.month)).toEqual(['2026-01']);
+    expect(payload.budgetAlerts[0].level).toBe(100);
+    expect(payload.savingsGoals[0]).toMatchObject({ id: 9, name: 'Liburan' });
+    expect(payload.savingsDeposits[0]).toMatchObject({ id: 11, goal_id: 9, amount: 250000 });
   });
 
   it('memotong nama yang terlalu panjang', () => {
@@ -176,7 +241,7 @@ describe('parseBackup', () => {
 });
 
 describe('buildBackupFile', () => {
-  it('membentuk payload backup v2 lengkap', () => {
+  it('membentuk payload backup v3 lengkap', () => {
     const categories = [
       {
         id: 1,
@@ -187,11 +252,59 @@ describe('buildBackupFile', () => {
         created_at: CREATED,
       },
     ];
+    const budgets = [
+      {
+        id: 1,
+        month: '2026-03',
+        category_id: 1,
+        amount: 500000,
+        created_at: CREATED,
+        updated_at: CREATED,
+      },
+    ];
+    const budgetMonths = [{ month: '2026-03', initialized_at: CREATED }];
+    const budgetAlerts = [
+      {
+        id: 1,
+        month: '2026-03',
+        category_id: 1,
+        level: 80 as const,
+        notified_at: CREATED,
+      },
+    ];
+    const savingsGoals = [
+      {
+        id: 1,
+        name: 'Liburan',
+        target_amount: 2000000,
+        note: null,
+        created_at: CREATED,
+        achieved_at: null,
+        reward_claimed_at: null,
+        reward_transaction_id: null,
+        reward_amount: 0,
+      },
+    ];
+    const savingsDeposits = [
+      {
+        id: 1,
+        goal_id: 1,
+        amount: 250000,
+        date: '2026-01-05',
+        note: null,
+        created_at: CREATED,
+      },
+    ];
     const payload = buildBackupFile({
       categories,
       transactions: [],
       wishlist: [],
       settings: [{ key: 'reminder_enabled', value: 'false' }],
+      budgets,
+      budgetMonths,
+      budgetAlerts,
+      savingsGoals,
+      savingsDeposits,
       exportedAt: '2026-03-01T00:00:00.000Z',
     });
 
@@ -204,6 +317,11 @@ describe('buildBackupFile', () => {
         transactions: [],
         wishlist: [],
         settings: [{ key: 'reminder_enabled', value: 'false' }],
+        budgets,
+        budget_months: budgetMonths,
+        budget_alerts: budgetAlerts,
+        savings_goals: savingsGoals,
+        savings_deposits: savingsDeposits,
       },
     });
   });

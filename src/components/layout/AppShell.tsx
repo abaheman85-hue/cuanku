@@ -1,17 +1,19 @@
 import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Gift, Home, Lock, ReceiptText, Settings } from 'lucide-react';
+import { Gift, Home, Lock, ReceiptText, Settings, Target } from 'lucide-react';
 import { CuanMark } from '../Mascot';
+import { BudgetAlertBanner } from '../BudgetAlertBanner';
 import { ReminderBanner } from '../ReminderBanner';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Beranda', icon: Home, end: true },
   { to: '/transaksi', label: 'Transaksi', icon: ReceiptText, end: false },
+  { to: '/anggaran', label: 'Anggaran', icon: Target, end: false },
   { to: '/wishlist', label: 'Wishlist', icon: Gift, end: false },
   { to: '/pengaturan', label: 'Pengaturan', icon: Settings, end: false },
 ] as const;
 
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.1.0';
 
 export function AppShell() {
   const location = useLocation();
@@ -87,6 +89,7 @@ export function AppShell() {
         </header>
 
         <div className="content">
+          <BudgetAlertBanner />
           <ReminderBanner />
           <Outlet />
         </div>

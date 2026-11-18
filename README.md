@@ -1,8 +1,8 @@
 # CuanKu
 
-CuanKu adalah website catatan keuangan pribadi yang **100% offline**. Semua transaksi, wishlist, foto, dan pengaturan disimpan di penyimpanan browser (IndexedDB) pada perangkatmu. Tidak ada akun, server, iklan, pelacakan, maupun koneksi internet yang dibutuhkan setelah aplikasi terbuka pertama kali.
+CuanKu adalah website catatan keuangan pribadi yang **100% offline**. Semua transaksi, anggaran, wishlist, tabungan, foto, dan pengaturan disimpan di penyimpanan browser (IndexedDB) pada perangkatmu. Tidak ada akun, server, iklan, pelacakan, maupun koneksi internet yang dibutuhkan setelah aplikasi terbuka pertama kali.
 
-Tampilan memakai gaya neobrutalist dengan maskot uang kertas mint bernama **Cuan** yang punya empat ekspresi: senang, panik, mengantuk, dan bersorak.
+Tampilan memakai gaya neobrutalist dengan latar kuning mentega `#FFE76A`, pola titik `#E8CC45`, kartu mint, border hitam tebal, dan maskot koin bernama **Cuan**.
 
 **Versi online:** <https://abaheman85-hue.github.io/cuanku/>
 
@@ -17,6 +17,7 @@ Tampilan memakai gaya neobrutalist dengan maskot uang kertas mint bernama **Cuan
 - Grafik batang enam bulan terakhir dan rincian pengeluaran per kategori.
 
 ### Wishlist
+- Halaman **Wishlist** memuat dua tab: **Wishlist** dan **Tabungan**.
 - Simpan barang impian beserta foto lokal (dikompres otomatis), tautan toko opsional, dan catatan.
 - Atur target harga, dana yang sudah disisihkan, serta rencana tabungan per bulan.
 - Masa tunggu 7 hari sebelum berstatus **Siap dibeli**.
@@ -25,17 +26,33 @@ Tampilan memakai gaya neobrutalist dengan maskot uang kertas mint bernama **Cuan
 - Perayaan singkat saat barang ditandai sudah dibeli.
 - Dana wishlist dicatat terpisah dan **tidak mengurangi saldo transaksi**.
 
+### Tabungan
+- Buat target tabungan dengan nama, nominal target, dan catatan opsional.
+- Catat setoran kapan saja; progres dan sisa dana dihitung otomatis.
+- Setoran **tidak dihitung sebagai pengeluaran** dan tidak memakai anggaran.
+- Saat target tercapai, ambil reward **me time** sekali per target.
+- Klaim reward membuat satu transaksi pengeluaran nyata kategori **Me time**, maksimal sejumlah dana yang terkumpul.
+- Konfirmasi dipakai untuk menghapus target maupun setoran.
+
+### Anggaran
+- Halaman **Anggaran** berisi batas pengeluaran per kategori untuk setiap bulan.
+- Anggaran bulan baru disalin dari bulan sebelumnya sekali saja, lalu bisa diubah atau dihapus.
+- Peringatan muncul di **80%** dan **100%**, sekali per level, per kategori, per bulan.
+- Banner langsung terlihat di aplikasi; notifikasi browser bersifat best-effort saat aplikasi terbuka.
+- Anggaran **hanya memberi peringatan**, tidak memblokir transaksi dan tidak memotong saldo.
+
 ### Pengaturan
 - Pengingat harian dengan jam yang bisa diatur dan sakelar aktif/nonaktif.
 - Izin notifikasi browser dan tombol uji notifikasi.
-- Kategori bawaan yang bisa ditambah, diubah nama/warnanya, dan dihapus.
-- Backup satu file JSON dan impor dengan konfirmasi.
+- Kategori bawaan (termasuk **Jajan** dan **Me time**) yang bisa ditambah, diubah nama/warnanya, dan dihapus.
+- Backup satu file JSON v3 dan impor dengan konfirmasi; backup v1/v2 lama tetap diterima.
 - Hapus semua data dan pulihkan kategori bawaan.
 - Tombol pasang aplikasi (PWA) jika browser mendukung.
 
 ### Lainnya
 - Responsif untuk HP, tablet, dan desktop.
 - Navigasi bawah di HP, sidebar di layar lebar.
+- Tema kuning mentega dengan pola titik, kartu mint, dan maskot koin lokal.
 - Font, ikon, dan gambar dibundel lokal — tanpa CDN.
 - Bisa dipasang sebagai PWA dan dibuka offline setelah pemuatan pertama.
 
@@ -68,7 +85,7 @@ npm test            # jalankan seluruh unit test
 npm run lint        # ESLint
 npm run build       # typecheck + build produksi ke folder dist
 npm run preview     # jalankan hasil build secara lokal
-npm run icons       # buat ulang ikon PNG PWA dari SVG di public/
+npm run icons       # buat ulang ikon PNG PWA dari maskot koin lokal
 ```
 
 ## Build dan hosting
@@ -92,7 +109,7 @@ Sekali saja di awal:
    ```bash
    git init
    git add .
-   git commit -m "CuanKu v2"
+   git commit -m "CuanKu v2.1.0"
    git branch -M main
    git remote add origin https://github.com/NAMA_AKUN/cuanku.git
    git push -u origin main
@@ -128,38 +145,41 @@ Jika tidak ingin memasang Git, buka repo GitHub → **Add file → Upload files*
 
 Service worker menyimpan aset aplikasi setelah pemuatan pertama. Jika ingin benar-benar yakin bisa offline, buka aplikasi sekali dalam keadaan online/tersambung ke server, lalu coba matikan jaringan dan muat ulang.
 
-## Batasan pengingat harian
+## Batasan notifikasi
 
-Pengingat harian bersifat **best-effort**:
+Pengingat harian dan peringatan anggaran bersifat **best-effort**:
 
 - Notifikasi web hanya bisa dikirim saat CuanKu atau PWA-nya sedang terbuka. Browser tidak mengizinkan situs menjadwalkan notifikasi saat aplikasi benar-benar tertutup tanpa push server.
 - Jika jam pengingat sudah lewat, hari ini belum ada transaksi, dan pengingat belum ditutup, CuanKu menampilkan **banner pengingat di dalam aplikasi** saat dibuka.
+- Peringatan anggaran 80%/100% selalu memakai banner di aplikasi. Notifikasi browser hanya tambahan jika izin diberikan.
 - Izin notifikasi bisa ditolak atau diblokir browser. Banner dalam aplikasi tetap berfungsi.
 - Pengingat memakai waktu perangkat dan tidak memerlukan internet.
 
 ## Backup dan data
 
 - Backup diekspor sebagai satu file JSON bernama `cuanku-backup-YYYY-MM-DD.json`.
-- File backup v2 menyimpan foto wishlist sebagai data URL di dalam JSON, sehingga tetap satu file.
-- Impor **mengganti seluruh data** yang ada di perangkat saat itu. Selalu buat backup sebelum mengimpor.
-- Format impor tetap kompatibel dengan backup **CuanKu v1** dari aplikasi lama, termasuk foto wishlist pada peta `images`/`image_file`.
+- Backup v3 menyimpan foto wishlist sebagai data URL dan menyertakan anggaran serta tabungan target, sehingga tetap satu file.
+- Impor **mengganti seluruh data** yang ada di perangkat saat itu dan selalu meminta konfirmasi. Selalu buat backup sebelum mengimpor.
+- Format impor tetap kompatibel dengan backup **CuanKu v1** dari aplikasi lama (termasuk foto wishlist pada peta `images`/`image_file`), **v2**, dan **v3**.
+- Pembaruan skema bersifat aditif: transaksi, wishlist, kategori, dan pengaturan lama tidak dihapus saat aplikasi diperbarui.
 - Data tidak disinkronkan ke perangkat lain. Pindahkan data dengan ekspor lalu impor.
 - Menghapus data situs di browser (clear site data) juga menghapus data CuanKu. Rutinlah membuat backup.
 
 ## Struktur proyek
 
 ```text
-public/                 ikon SVG/PNG, favicon, aset PWA
-scripts/                pembuat ikon PNG
+public/                 ikon PNG, favicon, aset PWA
+scripts/                pembuat ikon dan penyiap maskot koin
+src/assets/             maskot koin lokal (PNG transparan)
 src/
   components/           komponen UI, maskot, grafik, banner, form
   components/layout/    kerangka sidebar, topbar HP, navigasi bawah
   context/              dialog konfirmasi dan toast
   db/                   skema Dexie, data awal, repository, tipe
   hooks/                useLiveQuery dan useReminder
-  lib/                  tanggal, uang, wishlist, backup, gambar, notifikasi
-  pages/                Beranda, Transaksi, Wishlist, Pengaturan
-  styles/               token desain dan seluruh gaya responsif
+  lib/                  tanggal, uang, wishlist, backup, gambar, notifikasi, tema
+  pages/                Beranda, Transaksi, Anggaran, Wishlist, Pengaturan
+  styles/               token desain, gaya responsif, tambahan fitur 2.1
   test/                 setup Vitest (fake-indexeddb)
   App.tsx               rute aplikasi
   main.tsx              boot database, font, registrasi PWA
@@ -171,7 +191,7 @@ src/
 npm test
 ```
 
-Unit test mencakup format uang, tanggal, aturan masa tunggu dan perkiraan tabungan, pengaturan, parser backup v1/v2, serta operasi repository Dexie. Selain itu, alur utama (tambah/hapus transaksi, tambah wishlist, ubah dana, hapus wishlist) sudah diuji lewat smoke test browser pada build produksi.
+Unit test mencakup format uang, tanggal, aturan masa tunggu dan perkiraan tabungan, pengaturan, parser backup v1/v2/v3, penyalinan anggaran bulanan, peringatan 80%/100%, pemisahan setoran tabungan, batas klaim reward, serta operasi repository Dexie. Selain itu, alur utama sudah diuji lewat smoke test browser pada build produksi.
 
 ## Privasi
 

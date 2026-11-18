@@ -131,7 +131,7 @@ function WishlistDialog({
               {image ? (
                 <img src={image} alt={`Foto ${name || 'barang wishlist'}`} />
               ) : (
-                <CuanMark />
+                <CuanMark className="image-picker__mascot" />
               )}
             </div>
             <div className="image-picker__body">

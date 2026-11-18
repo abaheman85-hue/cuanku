@@ -39,7 +39,7 @@ import { Switch } from '../components/ui/Field';
 import { CategoryManager } from '../components/CategoryManager';
 import { Mascot } from '../components/Mascot';
 
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.1.0';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -371,15 +371,15 @@ export function PengaturanPage() {
           <div className="notice" style={{ marginTop: 12 }}>
             <Info aria-hidden="true" />
             <span>
-              Kompatibel dengan backup CuanKu v1 (aplikasi lama) dan v2. Impor akan mengganti
-              seluruh data yang ada sekarang.
+              Kompatibel dengan backup CuanKu v1 (aplikasi lama), v2, dan v3 (anggaran dan
+              tabungan). Impor akan mengganti seluruh data yang ada sekarang.
             </span>
           </div>
         </Card>
 
         <Card className="settings-grid__wide">
           <div className="settings-card__head">
-            <span className="settings-card__icon" style={{ background: 'var(--lavender-deep)' }}>
+            <span className="settings-card__icon" style={{ background: 'var(--bg-deep)' }}>
               <Sparkles aria-hidden="true" />
             </span>
             <div className="settings-card__titles">
@@ -428,12 +428,12 @@ export function PengaturanPage() {
             </div>
           </div>
           <div className="about">
-            <Mascot mood="happy" className="about__mascot" decorative />
+            <Mascot className="about__mascot" decorative />
             <div>
               <p>
                 CuanKu menyimpan semua catatan di penyimpanan browser (IndexedDB). Tidak ada
                 server, iklan, atau pelacakan. Data hanya hilang jika kamu menghapus data
-                browser — rutinlah membuat backup.
+                browser â€” rutinlah membuat backup.
               </p>
               <p style={{ marginTop: 6 }}>
                 {standalone

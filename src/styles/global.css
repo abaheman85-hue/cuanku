@@ -1,11 +1,14 @@
 /* ==========================================================================
-   CuanKu — neobrutalist design tokens & global styles
+   CuanKu â€” neobrutalist design tokens & global styles
    ========================================================================== */
 
 :root {
   color-scheme: light;
-  --lavender: #e7dbff;
-  --lavender-deep: #d9c7ff;
+  /* Latar aplikasi — ubah di sini (dan THEME di src/lib/theme.ts). */
+  --bg: #ffe76a;
+  --bg-deep: #e8cc45;
+  --bg-soft: #fff2a8;
+  --bg-dot: rgba(232, 204, 69, 0.9);
   --paper: #fffdf6;
   --paper-soft: #f7f2e7;
   --ink: #141414;
@@ -52,8 +55,8 @@ body {
   font-size: 16px;
   line-height: 1.5;
   color: var(--ink);
-  background-color: var(--lavender);
-  background-image: radial-gradient(rgba(20, 20, 20, 0.14) 1.3px, transparent 1.3px);
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--bg-dot) 1.3px, transparent 1.3px);
   background-size: 24px 24px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -164,9 +167,12 @@ ol {
   overflow: hidden;
 }
 
-.brand-mark svg {
+.brand-mark svg,
+.brand-mark img {
   width: 100%;
   height: 100%;
+  object-fit: contain;
+  padding: 3px;
 }
 
 .brand-word {
@@ -220,7 +226,6 @@ ol {
 }
 
 .nav-link:hover {
-  background: var(--lavender);
 }
 
 .nav-link.active {
@@ -293,7 +298,7 @@ ol {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
-  background: color-mix(in srgb, var(--lavender) 88%, transparent);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 2px solid rgba(20, 20, 20, 0.14);
 }
@@ -644,7 +649,6 @@ ol {
 }
 
 .btn--ghost:hover {
-  background: var(--lavender);
   border-color: var(--ink);
   box-shadow: var(--shadow-sm);
 }
@@ -698,7 +702,6 @@ ol {
 }
 
 .icon-btn:hover {
-  background: var(--lavender);
   transform: translate(-1px, -1px);
   box-shadow: 3px 3px 0 var(--ink);
 }
@@ -1006,7 +1009,6 @@ ol {
 }
 
 .choice-chip:hover {
-  background: var(--lavender);
 }
 
 .choice-chip.active {
@@ -1081,7 +1083,6 @@ ol {
 }
 
 .segmented__item:hover {
-  background: var(--lavender);
 }
 
 .segmented__item.active {
@@ -1183,7 +1184,6 @@ ol {
 }
 
 .month-switcher__btn:hover {
-  background: var(--lavender);
 }
 
 .month-switcher__btn svg {
@@ -1307,9 +1307,27 @@ ol {
   width: min(320px, 84%);
 }
 
-.hero__mascot svg {
+.hero__mascot img {
   width: 100%;
   height: auto;
+  object-fit: contain;
+  animation: mascot-bob 3.8s var(--ease) infinite;
+}
+
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__mascot img {
+    animation: none;
+  }
 }
 
 .speech {
@@ -1666,7 +1684,7 @@ ol {
 .wishlist-summary {
   display: grid;
   gap: 14px;
-  background: var(--lavender-deep);
+  background: var(--bg-deep);
 }
 
 .wishlist-summary__numbers {
@@ -1724,7 +1742,7 @@ ol {
   position: relative;
   aspect-ratio: 16 / 10;
   border-bottom: var(--border);
-  background: linear-gradient(135deg, var(--lavender-deep), var(--pink) 55%, var(--mint));
+  background: linear-gradient(135deg, var(--bg-deep), var(--pink) 55%, var(--mint));
   overflow: hidden;
 }
 
@@ -1884,7 +1902,7 @@ ol {
   border: var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  background: linear-gradient(135deg, var(--lavender-deep), var(--mint));
+  background: linear-gradient(135deg, var(--bg-deep), var(--mint));
 }
 
 .wish-detail__media img {
@@ -2331,7 +2349,7 @@ ol {
   padding: 10px 12px;
   border: 2.5px solid var(--ink);
   border-radius: 13px;
-  background: var(--lavender);
+  background: var(--bg-soft);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -2517,7 +2535,7 @@ ol {
   border: 2.5px solid var(--ink);
   border-radius: 12px;
   overflow: hidden;
-  background: var(--lavender);
+  background: var(--bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2533,6 +2551,12 @@ ol {
   width: 30px;
   height: 30px;
   color: rgba(20, 20, 20, 0.55);
+}
+
+.image-picker__preview .image-picker__mascot {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
 }
 
 .image-picker__body {
