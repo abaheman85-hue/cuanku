@@ -433,7 +433,7 @@ export function PengaturanPage() {
               <p>
                 CuanKu menyimpan semua catatan di penyimpanan browser (IndexedDB). Tidak ada
                 server, iklan, atau pelacakan. Data hanya hilang jika kamu menghapus data
-                browser â€” rutinlah membuat backup.
+                browser — rutinlah membuat backup.
               </p>
               <p style={{ marginTop: 6 }}>
                 {standalone
