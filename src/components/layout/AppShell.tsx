@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Gift, Home, Lock, ReceiptText, Settings, Target } from 'lucide-react';
 import { CuanMark } from '../Mascot';
 import { BudgetAlertBanner } from '../BudgetAlertBanner';
+import { PullToRefresh } from '../PullToRefresh';
 import { ReminderBanner } from '../ReminderBanner';
 
 const NAV_ITEMS = [
@@ -69,6 +70,7 @@ export function AppShell() {
       </aside>
 
       <div className="main">
+        <PullToRefresh />
         <header className="mobile-topbar">
           <Link to="/" className="mobile-brand" aria-label="CuanKu, kembali ke beranda">
             <span className="brand-mark" aria-hidden="true">

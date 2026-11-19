@@ -48,11 +48,13 @@
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  overscroll-behavior-y: contain;
   font-family: var(--font);
   font-size: 16px;
   line-height: 1.5;
@@ -2085,6 +2087,68 @@ ol {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Pull-to-refresh buatan aplikasi, menggantikan indikator bawaan browser. */
+.ptr {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.ptr__inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 14px 6px 8px;
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+  transform-origin: top center;
+}
+
+.ptr__inner--refreshing {
+  transition:
+    transform 0.2s var(--ease),
+    opacity 0.2s var(--ease);
+}
+
+.ptr__mascot {
+  width: 46px;
+  flex: none;
+  animation: mascot-run 0.55s ease-in-out infinite;
+}
+
+.ptr__mascot::before,
+.ptr__mascot::after {
+  content: '';
+  position: absolute;
+  top: 55%;
+  left: -8px;
+  width: 16px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ink);
+  opacity: 0.25;
+  animation: mascot-speed-line 0.42s linear infinite;
+}
+
+.ptr__mascot::after {
+  top: 68%;
+  left: -12px;
+  width: 10px;
+  animation-delay: 0.16s;
+}
+
+.ptr__label {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .error-box {
