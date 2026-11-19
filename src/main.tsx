@@ -13,10 +13,17 @@ import { initDatabase } from './db/db';
 
 type BootState = { status: 'loading' } | { status: 'ready' } | { status: 'error'; message: string };
 
+/** Jeda minimum splash supaya animasi lari Cuan sempat terlihat saat refresh. */
+const MIN_BOOT_MS = 650;
+
 function BootScreen({ error, onRetry }: { error?: string; onRetry?: () => void }) {
   return (
     <div className="boot">
-      <Mascot mood={error ? 'angry' : 'netral'} className="boot__mascot" decorative />
+      <Mascot
+        mood={error ? 'angry' : 'netral'}
+        className={`boot__mascot${error ? '' : ' boot__mascot--running'}`}
+        decorative
+      />
       <h1>CuanKu</h1>
       {error ? (
         <>
@@ -43,7 +50,10 @@ function Root() {
 
   useEffect(() => {
     let active = true;
-    initDatabase()
+    const minimumSplash = new Promise<void>((resolve) => {
+      window.setTimeout(resolve, MIN_BOOT_MS);
+    });
+    Promise.all([initDatabase(), minimumSplash])
       .then(() => {
         if (active) setBoot({ status: 'ready' });
       })

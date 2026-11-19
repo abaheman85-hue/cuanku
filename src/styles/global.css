@@ -2701,6 +2701,61 @@ ol {
   width: min(240px, 64vw);
 }
 
+.boot__mascot--running {
+  animation: mascot-run 0.62s ease-in-out infinite;
+}
+
+.boot__mascot--running::before,
+.boot__mascot--running::after {
+  content: '';
+  position: absolute;
+  top: 56%;
+  left: -18px;
+  width: 32px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ink);
+  opacity: 0.28;
+  animation: mascot-speed-line 0.42s linear infinite;
+}
+
+.boot__mascot--running::after {
+  top: 70%;
+  left: -30px;
+  width: 20px;
+  animation-delay: 0.16s;
+}
+
+@keyframes mascot-run {
+  0%,
+  100% {
+    transform: translate(-14px, 0) rotate(-4deg);
+  }
+  25% {
+    transform: translate(-4px, -7px) rotate(2deg);
+  }
+  50% {
+    transform: translate(8px, 0) rotate(-3deg);
+  }
+  75% {
+    transform: translate(16px, -7px) rotate(3deg);
+  }
+}
+
+@keyframes mascot-speed-line {
+  0% {
+    transform: translateX(6px) scaleX(0.6);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.28;
+  }
+  100% {
+    transform: translateX(-28px) scaleX(1);
+    opacity: 0;
+  }
+}
+
 .boot h1 {
   font-size: 30px;
   letter-spacing: -0.05em;
