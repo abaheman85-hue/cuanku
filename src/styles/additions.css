@@ -447,10 +447,11 @@
 }
 
 /* --------------------------------------------------------------------------
-   Maskot dengan ekspresi: badan koin tetap satu aset, wajah jadi lapisan SVG
+   Maskot dengan ekspresi: lima gambar PNG lokal, satu untuk setiap mood
    -------------------------------------------------------------------------- */
 
-.mascot {
+/* Spesifisitas nol supaya ukuran spesifik tiap konteks tidak tertimpa. */
+:where(.mascot) {
   position: relative;
   display: inline-block;
   width: 100%;
